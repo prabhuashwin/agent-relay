@@ -12,7 +12,7 @@ Report:
 2. **Done**: each change with file paths and commit ids
 3. **Not done or partly done**, and why
 4. **Decisions** and the reason for each
-5. **Paid, live or irreversible actions** taken (AWS, Bedrock, pushes, deletes); say "none" if none
+5. **Paid, live or irreversible actions** taken (cloud resources, paid APIs, pushes, deletes); say "none" if none
 6. **Risks**: failing tests, open questions, anything you're unsure about
 7. **Next step**: one concrete action
 

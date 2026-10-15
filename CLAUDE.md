@@ -18,7 +18,7 @@
 
 ## Safety
 - `git push` and the AWS CLI are blocked by this repo's permission settings. If a step needs one, give me the exact command to run myself.
-- Never make other paid or live calls (Bedrock, production endpoints) without my explicit OK in this session.
+- Never make other paid or live calls (paid model APIs, production endpoints) without my explicit OK in this session.
 - Don't start loops, monitors, or scheduled wake-ups unless I ask. If one is still running when we finish, tell me.
 
 ## Escalation

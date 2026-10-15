@@ -1,9 +1,9 @@
-# Working with Claude in this repo
+# Working with Claude (setup kit)
 
 ## Install
 Needs Git Bash (Windows) or bash, plus Python 3 on PATH. Give it a project folder (`.` is allowed):
-    bash C:/GitCode/claude-setup/install.sh C:/GitCode/NewProject
-    bash C:/GitCode/claude-setup/install.sh .        # from inside a project
+    bash <path-to>/claude-setup/install.sh /path/to/project
+    bash <path-to>/claude-setup/install.sh .        # from inside a project
 What it does:
 - **User level** (shared by all projects, refreshed on every run): agents, skills and hook scripts in `~/.claude/agents/`, `skills/`, `scripts/`; status line and hooks in `~/.claude/settings.json`.
 - **Project level**: the CLAUDE.md block, a `permissions` block in `.claude/settings.json`, and a `handoffs/` folder.
@@ -36,7 +36,7 @@ Then start a NEW session in that folder (old sessions don't pick up changes).
 
 ## Daily loop
 1. **Start**: open `handoffs/INDEX.md`, pick a workstream, start a new session with its "Resume with" line
-   (e.g. `OpenKB strict: continue from handoffs/openkb-strict.md`). New work: just describe it.
+   (e.g. `Search indexing: continue from handoffs/search-indexing.md`). New work: just describe it.
 2. **Work**: small fix -> ask directly. Anything bigger -> `/crew <task>`, read the plan, say go.
 3. **Long jobs** (tests over ~2 min, deploys): run them yourself in a terminal, paste only failures.
 4. **Context warning** at 100k -> `/compact` with a focus note; at 150k -> step 5.

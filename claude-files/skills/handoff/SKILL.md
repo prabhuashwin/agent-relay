@@ -9,7 +9,7 @@ Handoffs live in `handoffs/`, one file per workstream, listed in `handoffs/INDEX
 
 1. **Pick the topic.**
    - If this session started from a file in `handoffs/`, reuse that file.
-   - Otherwise read `handoffs/INDEX.md`. If an existing row is clearly the same workstream, reuse it; if not, make a new short kebab-case slug (2-3 words, e.g. `teams-diagnostics`). If unsure which, ask the user in one line.
+   - Otherwise read `handoffs/INDEX.md`. If an existing row is clearly the same workstream, reuse it; if not, make a new short kebab-case slug (2-3 words, e.g. `search-indexing`). If unsure which, ask the user in one line.
 2. **Write `handoffs/<slug>.md`** (overwrite it), starting with `# Handoff: <Topic> - <one-line state>`, then:
    - **Goal** - 1-2 lines
    - **Done so far** - bullets, with file paths and commit ids
