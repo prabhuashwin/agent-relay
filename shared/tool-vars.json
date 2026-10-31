@@ -1,0 +1,20 @@
+{
+  "claude": {
+    "handoff_cmd": "/handoff",
+    "decide_cmd": "/decide",
+    "recap_cmd": "/recap",
+    "checkpoint_cmd": "/checkpoint",
+    "clear_then_start": "Run /clear, then start",
+    "append_note": "Use `printf '%s\\n' '<row>' >> DECISIONS.md`; if the text contains the words \"git push\" the Bash guard will block that, so use the Edit tool instead.",
+    "usagectl": "~/.claude-setup/bin/usagectl"
+  },
+  "codex": {
+    "handoff_cmd": "$handoff",
+    "decide_cmd": "$decide",
+    "recap_cmd": "$recap",
+    "checkpoint_cmd": "$checkpoint",
+    "clear_then_start": "Start",
+    "append_note": "Use `printf '%s\\n' '<row>' >> DECISIONS.md`, or your file editing tool if the shell refuses.",
+    "usagectl": "~/.claude-setup/bin/usagectl"
+  }
+}

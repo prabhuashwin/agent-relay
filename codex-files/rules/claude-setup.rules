@@ -1,0 +1,44 @@
+# claude-setup: commands the user must run themselves.
+# Installed to ${CODEX_HOME:-~/.codex}/rules/claude-setup.rules. Own file: edit default.rules for personal rules.
+# Prefix rules only: they match the start of a command, so `git -C dir push` is not covered. Treat as a guardrail.
+# Check with: codex execpolicy check --rules claude-setup.rules -- git push origin main
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "forbidden",
+    justification = "Pushing is done by the user in a terminal.",
+    match = [["git", "push"], ["git", "push", "origin", "main"]],
+    not_match = [["git", "status"], ["git", "pull"]],
+)
+
+prefix_rule(
+    pattern = ["aws"],
+    decision = "forbidden",
+    justification = "The AWS CLI is run by the user, not the agent.",
+    match = [["aws", "s3", "ls"]],
+    not_match = [["awk", "1"]],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "forbidden",
+    justification = "Merging pull requests is done by the user.",
+    match = [["gh", "pr", "merge", "12"]],
+    not_match = [["gh", "pr", "view", "12"], ["gh", "pr", "create"]],
+)
+
+prefix_rule(
+    pattern = ["gh", "repo", "delete"],
+    decision = "forbidden",
+    justification = "Deleting repositories is done by the user.",
+    match = [["gh", "repo", "delete", "x/y"]],
+    not_match = [["gh", "repo", "view", "x/y"]],
+)
+
+prefix_rule(
+    pattern = ["gh", "release", ["create", "delete"]],
+    decision = "forbidden",
+    justification = "Creating or deleting releases is done by the user.",
+    match = [["gh", "release", "create", "v1"], ["gh", "release", "delete", "v1"]],
+    not_match = [["gh", "release", "list"]],
+)
