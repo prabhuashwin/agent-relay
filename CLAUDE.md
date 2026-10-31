@@ -2,6 +2,7 @@
 
 ## Sessions
 - One workstream per session. Ongoing work is listed in `handoffs/INDEX.md`; a session usually starts from one of those files.
+- Decisions live in `DECISIONS.md` (one line each; the handoff file has the detail). When we settle something non-obvious, log it with `/decide <decision> -- <why>`; /handoff also adds the session's decisions.
 - When a task is finished or I change topic, remind me to run /handoff, then /clear.
 - If you get a "[Context check]" note, follow it. At 150k tokens my prompts are blocked until I /handoff or /compact, so warn me before that.
 

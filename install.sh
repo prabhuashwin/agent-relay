@@ -6,6 +6,7 @@
 # Works in Git Bash on Windows, and on macOS/Linux. Backups go to ~/.claude/backups/claude-setup/.
 # Part 1 also registers a Bash guard hook (blocks git push, aws, destructive gh).
 # Run on the kit folder itself, it leaves the kit's CLAUDE.md unchanged.
+# Part 1 also registers a SessionStart "session brief" hook (prints handoffs/INDEX.md and DECISIONS.md); Part 2 creates DECISIONS.md.
 # Safe to run again.
 set -euo pipefail
 
@@ -64,17 +65,19 @@ if [ "$WIN" = 1 ]; then
   STATUS_CMD="$PS -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/statusline.ps1\""
   HOOK_CMD="$PS -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/context-check.ps1\""
   GUARD_CMD="$PS -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/bash-guard.ps1\""
+  BRIEF_CMD="$PS -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/session-brief.ps1\""
 else
   STATUS_CMD="bash \"$HOME/.claude/scripts/statusline.sh\""
   HOOK_CMD="bash \"$HOME/.claude/scripts/context-check.sh\""
   GUARD_CMD="bash \"$HOME/.claude/scripts/bash-guard.sh\""
+  BRIEF_CMD="bash \"$HOME/.claude/scripts/session-brief.sh\""
 fi
 COMPACT_CMD='echo "[Context check] The conversation was just compacted. If this workstream has progress or decisions not yet saved under handoffs/, end your reply with one line offering to run /handoff."'
 USER_SETTINGS="$USERP/.claude/settings.json"
 
-"$PY" - "$USER_SETTINGS" "$STATUS_CMD" "$HOOK_CMD" "$COMPACT_CMD" "$GUARD_CMD" <<'PYEOF'
+"$PY" - "$USER_SETTINGS" "$STATUS_CMD" "$HOOK_CMD" "$COMPACT_CMD" "$GUARD_CMD" "$BRIEF_CMD" <<'PYEOF'
 import json, os, sys
-p, sc, hc, cc, gc = sys.argv[1:6]
+p, sc, hc, cc, gc, bc = sys.argv[1:7]
 s = {}
 if os.path.exists(p):
     t = open(p, encoding="utf-8-sig").read().strip()
@@ -108,6 +111,8 @@ ups.append({"hooks": [{"type": "command", "command": hc}]})
 h["UserPromptSubmit"] = ups
 ss = drop(h.get("SessionStart", []), "just compacted")
 ss.append({"matcher": "compact", "hooks": [{"type": "command", "command": cc}]})
+ss = drop(ss, "session-brief")
+ss.append({"matcher": "startup|resume|clear", "hooks": [{"type": "command", "command": bc}]})
 h["SessionStart"] = ss
 pt = drop(h.get("PreToolUse", []), "bash-guard")
 pt.append({"matcher": "Bash", "hooks": [{"type": "command", "command": gc}]})
@@ -214,6 +219,7 @@ else
 fi
 
 mkdir -p "$ROOT/handoffs"
+[ -f "$ROOT/DECISIONS.md" ] || cp "$SRC/DECISIONS.md" "$ROOT/DECISIONS.md"
 
 echo "Installed into $ROOTP"
 echo "User backup:    $BK_USER"
@@ -247,6 +253,11 @@ g1=$(gtest "git push origin main"); g2=$(gtest "git status")
 if [ "$g1" != 0 ] && [ "$g2" = 0 ]; then echo "Bash guard self-test: OK"; else echo "Bash guard self-test: FAILED - paste this output to Claude (push exit=$g1, status exit=$g2)"; fi
 g3=$(gtest 'echo hi\ngit push')
 if [ "$g3" != 0 ]; then echo "Bash guard multi-line self-test: OK"; else echo "Bash guard multi-line self-test: FAILED - paste this output to Claude (exit=$g3)"; fi
+
+TEST_IN3="{\"cwd\":\"$HEREP\",\"hook_event_name\":\"SessionStart\",\"source\":\"startup\"}"
+if [ "$WIN" = 1 ]; then out3=$(printf '%s' "$TEST_IN3" | $PS -NoProfile -ExecutionPolicy Bypass -File "$USERP/.claude/scripts/session-brief.ps1" 2>&1 || true)
+else out3=$(printf '%s' "$TEST_IN3" | bash "$USER_DIR/scripts/session-brief.sh" 2>&1 || true); fi
+case "$out3" in *"[Session brief] Open workstreams"*) echo "Session brief self-test: OK" ;; *) echo "Session brief self-test: FAILED - paste this output to Claude" ;; esac
 
 chk() { "$PY" -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$2" && echo "$1 settings.json: OK" || echo "$1 settings.json: INVALID - paste this output to Claude"; }
 chk user "$USER_SETTINGS"

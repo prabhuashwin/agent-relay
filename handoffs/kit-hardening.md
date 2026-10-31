@@ -18,6 +18,8 @@ Review the kit, fix what contradicted its own cost/safety goals, and wire Fable 
 - Guard is a user-level hook, deny list is the second layer: prefix patterns can't see through wrappers; hooks apply to every project.
 - Fable as a subagent (`oracle`) not a session model: fresh small context per question is what makes it cheap; main session stays Opus.
 - Both .sh and .ps1 kept for every script (installer copies per platform); pwsh preferred for startup time.
+- Decision log is a markdown table in the repo (`DECISIONS.md`), Obsidian only a viewer: git-tracked, grep-able by scout, a few hundred tokens at session start; Notion would need a live call every session.
+- Guard regex left matching the push command anywhere in a command text: a false positive is cheap (use the Write tool), a push slipping through a wrapper is not.
 
 **Open issues / gotchas**
 - Guard false positive: any Bash command whose TEXT contains the two words "git push" is blocked, including heredocs that write docs mentioning it. Use the Write tool for such files. Consider tightening to only match at a command position (start, or after `;`, `&&`, `|`, `$(`, backtick, or a quote following `-c`).
