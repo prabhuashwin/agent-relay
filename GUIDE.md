@@ -180,12 +180,31 @@ For the Claude status line JSON (fields `rate_limits.five_hour` and `rate_limits
 
 It converts used to remaining (100 minus used) and only fills windows you configured with the ids `five_hour` and `seven_day`. If none match, it exits 2.
 
+### Automatic usage collection
+
+After installing `--tool both`, sign into the Codex CLI normally and configure your account windows. Then run:
+
+```bash
+usagectl config capture-claude --account claude-main
+usagectl usage fetch --account codex-main --timeout 20
+usagectl advise --refresh --codex-account codex-main --type feature --scope small --risk medium --need edit
+usagectl config capture-claude --disable
+```
+
+The alias must describe the account currently logged into the relevant tool. It does not select a login. With multiple Codex aliases, `--refresh` requires `--codex-account`. Fetching uses the documented [Codex app-server](https://developers.openai.com/codex/app-server) `account/rateLimits/read` method with a temporary local process. No model turn is started. The timeout defaults to 20 seconds (maximum 60), followed by bounded process cleanup. Authentication or schema failures leave usage history intact and stop refreshed advice.
+
+Codex windows map by duration: 300 minutes to `session`, 10080 minutes to `weekly`, regardless of primary/secondary position. Configure exactly one shared percent window for each returned kind. Unknown durations, ambiguous mappings, or a missing configured shared window fail the whole fetch; model-specific windows remain manual.
+
+Claude capture is opt-in and uses the documented [status-line payload](https://code.claude.com/docs/en/statusline). The installed Bash/PowerShell script forwards quota data to the coordinator while preserving its visible status output. Configure shared percent windows named `five_hour` and `seven_day`. Limits may be absent before the first response; absence never invents an observation. Identical readings are recorded at most once per minute, while changed values are recorded immediately. Capture depends on the terminal status line running; native IDE capture is not provided. **Separate Fable allowance remains manual until a supported source is verified.**
+
+Automatic readings append to `~/.claude-setup/state/usage.jsonl`, feeding the same status, pace and recommendation engine as manual records. They do not edit a manual `usage.json` snapshot. Stored timestamps are UTC; output uses the configured timezone, including `+05:30` for IST. There is no background polling, and `advise --refresh` only fetches Codex; stale Claude readings still require a real status-line update or manual import.
+
 ## Automation: done and deferred
 | Implemented | Deferred |
 |---|---|
 | Claude hooks (context check, Bash guard, session brief) | Codex hooks (they need per-hook trust review and are a guardrail, not enforcement) |
-| Codex rules file, `$skills`, AGENTS.md block | Automatic reading of Codex usage (no documented interface; manual only) |
-| Manual usage records and snapshot import, Claude status line JSON parser | Wiring the Claude status line into usage (it does not run in the VS Code extension) |
+| Codex rules file, `$skills`, AGENTS.md block, read-only usage fetch | Automatic separate Fable allowance |
+| Manual records/import, opt-in Claude terminal status-line capture | Claude native IDE usage capture |
 | Pace, routing, task history, checkpoints, resume/claim | Launching one tool from the other |
 | | Background polling |
 

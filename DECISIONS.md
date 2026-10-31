@@ -21,3 +21,4 @@ Append-only, one line per decision, newest last. Add a row with `/decide <decisi
 | 2026-10-31 | Coordinator state lives in ~/.claude-setup, outside repos | Keeps usage data and account aliases out of Git | dual-tool.md |
 | 2026-10-31 | Same reset cycle means resets within 15 minutes | Relative --resets-in values differ each call, so exact matching broke pacing and task deltas | dual-tool.md |
 | 2026-10-31 | Damaged markers, malformed settings and failed self-tests now fail the install | Intentional stricter behaviour: failing before any write beats a partial install | dual-tool.md |
+| 2026-10-31 | Supersede manual-only usage: bounded Codex app-server reads and opt-in Claude terminal capture | Supported quota fields feed existing recommendations without model turns; separate Fable allowance and native IDE capture remain manual | automatic-usage-plan.md |

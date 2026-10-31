@@ -130,7 +130,8 @@ def parse_claude_statusline(text, cfg, zone, now, account):
     out = []
     for wid in STATUSLINE_WINDOWS:
         entry = limits.get(wid)
-        if entry is None or wid not in configured or configured[wid]["units"] != "percent":
+        if entry is None or wid not in configured or configured[wid]["units"] != "percent" \
+                or configured[wid]["scope"] != "shared":
             continue
         if not isinstance(entry, dict):
             raise CtlError("rate_limits.%s must be an object" % wid)

@@ -16,8 +16,9 @@
 - No paid or live calls (paid model APIs, production endpoints) without the user's explicit OK in this session.
 - When resuming work, never discard, stash, commit or overwrite changes you did not make. Check `git status` first.
 
-## Usage and checkpoints (manual data)
-- Provider usage is entered by hand: check `/status` or the provider's usage page, then `usagectl usage record ...`. Nothing is read automatically.
+## Usage and checkpoints
+- `usagectl usage fetch --account <codex-alias>` reads the current Codex CLI login's limits. `usagectl config capture-claude --account <claude-alias>` enables terminal status-line capture. Aliases must match the user's actual login; they do not select credentials.
+- `usagectl advise --refresh ...` refreshes Codex then runs routing. Claude Fable limits stay manual; unknown or stale readings must not be treated as full. Manual records/imports remain supported.
 - `usagectl usage status`, `usagectl pace show` and `usagectl route recommend ...` give guidance, never a provider limit.
 - `usagectl handoff prepare|verify|resume|claim` manage `handoffs/<slug>.checkpoint.md`. Run `usagectl --help` for options.
 

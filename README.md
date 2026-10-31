@@ -25,7 +25,7 @@ A small, installable kit that makes [Claude Code](https://claude.com/claude-code
 
 **Rules for Codex.** A rules file (`claude-setup.rules`) forbids the same commands by prefix match. Codex has no installed hooks; the project `AGENTS.md` block tells it to read `handoffs/INDEX.md` and the last ten lines of `DECISIONS.md` at the start.
 
-**A usage coordinator (`usagectl`, Codex and both modes).** Local planning guidance for people with a Claude and a Codex subscription: record what your usage panels say, see pace per account, get a routing recommendation, and hand a workstream from one tool to the other with a git-checked checkpoint. It never calls a provider and never launches a tool.
+**A usage coordinator (`usagectl`, Codex and both modes).** Fetch Codex usage, capture Claude terminal status-line limits, or record your panels manually. See pace per account, get a routing recommendation, and hand a workstream to the other tool with a git-checked checkpoint. Fetching starts a temporary Codex app-server for a read-only quota request; it never starts a model task.
 
 **Project scaffolding.** A `CLAUDE.md` block (Claude) and an `AGENTS.md` block (Codex) with the working rules, a permissions block in `.claude/settings.json` (Claude), a `handoffs/` folder, and an append-only `DECISIONS.md`. The last two are shared by both tools.
 
@@ -68,17 +68,92 @@ usagectl window add --account claude-main --id seven_day --kind weekly  --units 
 usagectl window add --account codex-main  --id weekly    --kind weekly  --units percent --reserve 10
 ```
 
-Each morning, read your panels (Claude `/usage`; Codex `/status` or chatgpt.com/codex/settings/usage) and record them, then ask for the plan:
+Each morning, read your panels (Claude `/usage`; Codex `/status` or chatgpt.com/codex/settings/usage) and record **every configured window**, then ask for the plan. These values are illustrative; replace the remaining percentages and reset times with your own:
 
 ```bash
 usagectl usage record --account claude-main --window five_hour --remaining 80 --resets-in 3h20m
+usagectl usage record --account claude-main --window seven_day --remaining 60 --resets-in 4d
+usagectl usage record --account codex-main --window weekly --remaining 70 --resets-in 3d
 usagectl usage status && usagectl pace show
 usagectl route recommend --type refactor --scope medium --risk medium --need edit --workstream search-index
 ```
 
 `GUIDE.md` has the full workflow: task records, checkpoints and resuming in the other tool, importing snapshots, exit codes, recovery and uninstall.
 
-**Not implemented (deferred):** Codex hooks, automatic reading of Codex usage (no documented interface), Claude status line wiring for usage (the status line does not run in the VS Code extension; only a parser ships), launching one tool from the other, and background polling. Estimates are local planning guidance, not quota enforcement.
+### Automatic usage
+
+Install or update with `--tool both` for the coordinator and Claude status scripts, then enable capture for your configured account:
+
+```bash
+usagectl config capture-claude --account claude-main
+usagectl usage fetch --account codex-main
+usagectl advise --refresh --codex-account codex-main --type feature --scope small --risk medium --need edit
+```
+
+Codex reads the account currently signed into its CLI; aliases are labels, not logins. Claude captures shared session and weekly limits when its terminal status line receives them after a response. `advise --refresh` fetches Codex before evaluating both accounts using the existing engine. It does not force a Claude response. Missing or stale Claude data still needs refreshing.
+
+Observations go to local `state/usage.jsonl`; an editable manual `usage.json` snapshot is not rewritten. Your configured timezone controls displayed timestamps. Claude's separate **Fable allowance stays manual**. Disable capture with `usagectl config capture-claude --disable`.
+
+**Deferred:** Codex hooks, Claude IDE usage capture, automatic Fable readings, launching model tasks in the other tool, and background polling. Estimates remain planning guidance, not quota enforcement. See [collector details](GUIDE.md#automatic-usage-collection).
+
+## Example: continue a Claude task in Codex
+
+You're adding search to an app. Claude has drafted the indexer, but its session allowance is nearing your reserve. You want Codex to finish the tests without repeating the investigation.
+
+This walkthrough assumes you installed `--tool both`, added `usagectl` to PATH, and completed the account/window setup above. Run terminal commands from your app's Git repository. The sample accounts have two Claude windows and one Codex window; configure and record any additional windows your own plans show. Account aliases are local labels, not logins.
+
+**1. Save the current work in Claude before allowance runs out.** Send these messages in Claude Code, one at a time:
+
+```text
+/handoff
+```
+
+```text
+/checkpoint
+```
+
+Tell Claude to use `search-index` as the workstream and `claude-main` as the owner. Ask it to include the actual files changed, decisions, verification results, and next action. For this example, the next action is to finish and run the indexer's tests. Don't label tests as passed unless they ran successfully.
+
+This saves a readable handoff and `handoffs/search-index.checkpoint.md`, which records the Git state. Stop editing this workstream in Claude after the checkpoint.
+
+**2. Refresh both accounts' usage in your terminal.** Here Claude has 8% session allowance remaining, below the configured 10% reserve. Codex still has capacity. Replace all example values with fresh readings:
+
+```bash
+usagectl usage record --account claude-main --window five_hour --remaining 8 --resets-in 2h
+usagectl usage record --account claude-main --window seven_day --remaining 60 --resets-in 4d
+usagectl usage record --account codex-main --window weekly --remaining 70 --resets-in 3d
+usagectl usage status
+usagectl pace show
+```
+
+When updating a window, use its actual remaining reset time; repeatedly entering `4d` would move the recorded reset. Usage observations stay in your local coordinator state, outside the project.
+
+**3. Ask where to continue.**
+
+```bash
+usagectl route recommend --type feature --scope small --risk medium --need edit --owner claude-main --workstream search-index --checkpoint search-index
+```
+
+With these fresh observations and a matching checkpoint, the recommendation is to **switch to `codex-main`** because Claude is below reserve. With no task history or estimates, confidence is low: start with a small step. This recommends a tool; it does not launch it or transfer your conversation.
+
+**4. Generate the resume prompt and paste it into Codex.** Open Codex in the same project directory, then use this terminal command to obtain the prompt:
+
+```bash
+usagectl handoff resume --workstream search-index --to codex-main
+```
+
+The generated prompt tells Codex what to read and requires these checks before editing:
+
+```bash
+usagectl handoff verify --workstream search-index
+usagectl handoff claim --workstream search-index --to codex-main
+```
+
+If verification reports a mismatch, reconcile the changed Git state before continuing. Keep one tool writing this workstream at a time. The checkpoint describes uncommitted work; it does not copy files to another machine or worktree.
+
+**5. Finish a bounded step and save again.** Ask Codex to finish the indexer tests, run them, and report the results. At the next boundary, use `$handoff` followed by `$checkpoint`. You can later follow the same process in reverse with `--to claude-main`.
+
+You now have shared decisions, a concrete next action, and a checked code state when changing tools. See [the daily workflow](GUIDE.md#two-accounts-daily-workflow) to record task outcomes and build usage-estimation history.
 
 ## Repo layout
 

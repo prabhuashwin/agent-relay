@@ -1,6 +1,17 @@
 # Claude Code status line (terminal only): model + current context size.
 $ErrorActionPreference = 'SilentlyContinue'
 $data  = (New-Object System.IO.StreamReader([Console]::OpenStandardInput(), [System.Text.Encoding]::UTF8)).ReadToEnd() | ConvertFrom-Json   # stdin is UTF-8
+# Only quota fields are forwarded. Capture failures never replace the status display.
+$usageHome = if ($env:CLAUDE_SETUP_HOME) { $env:CLAUDE_SETUP_HOME } else { Join-Path $HOME '.claude-setup' }
+$usageCli = Join-Path $usageHome 'coordinator/usagectl.py'
+if ((Test-Path -LiteralPath $usageCli) -and (Test-Path -LiteralPath (Join-Path $usageHome 'config.json'))) {
+  foreach ($interpreter in @('python', 'py', 'python3')) {
+    if (Get-Command $interpreter -ErrorAction SilentlyContinue) {
+      @{rate_limits = $data.rate_limits} | ConvertTo-Json -Depth 12 -Compress | & $interpreter $usageCli usage capture-claude 2>$null | Out-Null
+      if ($LASTEXITCODE -eq 0) { break }
+    }
+  }
+}
 $model = $data.model.display_name
 $tokens = 0
 $path = $data.transcript_path

@@ -23,6 +23,7 @@ DEFAULT_CONFIG = {
     "stale_after_minutes": {"session": 60, "weekly": 720, "other": 720},
     "workday_weights": {"mon": 1, "tue": 1, "wed": 1, "thu": 1, "fri": 1, "sat": 0, "sun": 0},
     "preferred_provider": None,
+    "claude_capture_account": None,
     "spending_policy": {"paid_api_fallback": False, "credit_purchases": False, "paid_resets": False},
     "routing": {"switch_overhead_with_checkpoint": 0.15, "switch_overhead_without_checkpoint": 0.5,
                 "switch_margin": 0.25, "switch_cooldown_hours": 4, "min_history_samples": 3},
@@ -136,6 +137,9 @@ def validate(cfg):
         raise CtlError("config: accounts must be an object")
     for alias, acct in accounts.items():
         _validate_account(alias, acct)
+    capture = cfg.get("claude_capture_account")
+    if capture is not None and (not isinstance(capture, str) or capture not in accounts or accounts[capture]['provider'] != 'claude'):
+        raise CtlError('config: claude_capture_account must name a configured Claude account or be null')
     return cfg
 
 

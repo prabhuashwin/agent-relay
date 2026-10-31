@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # Claude Code status line (terminal only): model + current context size.
 input=$(cat)
+# Capture is opt-in through usagectl config; preserve the existing visible status line.
+usage_home="${CLAUDE_SETUP_HOME:-$HOME/.claude-setup}"
+if [ -f "$usage_home/config.json" ] && [ -f "$usage_home/coordinator/usagectl.py" ]; then
+  for interpreter in python3 python py; do
+    if command -v "$interpreter" >/dev/null 2>&1; then
+      printf '%s' "$input" | "$interpreter" "$usage_home/coordinator/usagectl.py" usage capture-claude >/dev/null 2>&1 && break
+    fi
+  done
+fi
 field() { printf '%s' "$input" | grep -o "\"$1\":\"[^\"]*\"" | head -n 1 | sed "s/^\"$1\":\"//; s/\"\$//"; }
 model=$(field display_name)
 path=$(field transcript_path | sed 's#\\\\#/#g')

@@ -7,7 +7,7 @@ import os
 import re
 import sys
 
-from . import VERSION, config, gitutil, handoff, history, pacing, routing, store, usage
+from . import VERSION, collectors, config, gitutil, handoff, history, pacing, routing, store, usage
 from .config import ALIAS_RE, SLUG_RE
 from .errors import CtlError, EXIT_CONFLICT
 from .timeutil import fmt_local, fmt_utc, now as clock_now, parse_date, parse_duration, parse_ts
@@ -114,6 +114,30 @@ def cmd_config_show(args):
 def cmd_config_validate(args):
     _context()
     _emit(args, {"valid": True}, ["config ok"])
+    return 0
+
+
+def cmd_config_capture(args):
+    paths, cfg, _z, _n = _context()
+    if args.account:
+        collectors.require_provider(cfg, args.account, 'claude')
+    cfg['claude_capture_account'] = args.account
+    config.save(cfg, paths)
+    _emit(args, {'claude_capture_account': args.account}, ['Claude capture: ' + (args.account or 'disabled')])
+    return 0
+
+
+def cmd_usage_fetch(args):
+    paths, cfg, zone, now = _context()
+    recs = collectors.fetch_codex(paths, cfg, zone, now, args.account, args.timeout)
+    _emit(args, {'observations': recs}, ['Fetched %d window(s) from the logged-in Codex CLI account into %s' % (len(recs), args.account)])
+    return 0
+
+
+def cmd_usage_capture(args):
+    paths, cfg, zone, now = _context()
+    if cfg.get('claude_capture_account'):
+        collectors.capture_claude(paths, cfg, zone, now, sys.stdin.read())
     return 0
 
 
@@ -237,6 +261,12 @@ def _validate_checkpoint(slug):
 
 def cmd_route_recommend(args):
     paths, cfg, zone, now = _context()
+    if args.refresh:
+        aliases = [a for a, c in cfg['accounts'].items() if c['provider'] == 'codex']
+        alias = args.codex_account or (aliases[0] if len(aliases) == 1 else None)
+        if not alias:
+            raise CtlError('Select --codex-account for refresh (the alias must match the CLI login)')
+        collectors.fetch_codex(paths, cfg, zone, now, alias, args.timeout)
     if not ALIAS_RE.match(args.type):
         raise CtlError("invalid --type %r (lowercase letters, digits, - and _)" % args.type)
     if args.owner and args.owner not in cfg["accounts"]:
@@ -501,6 +531,9 @@ def build_parser():
     cfgp.required = True
     leaf(cfgp, "show", cmd_config_show)
     leaf(cfgp, "validate", cmd_config_validate)
+    capture = leaf(cfgp, 'capture-claude', cmd_config_capture).add_mutually_exclusive_group(required=True)
+    capture.add_argument('--account')
+    capture.add_argument('--disable', action='store_true')
 
     us = top.add_parser("usage").add_subparsers(dest="verb", parser_class=CtlParser)
     us.required = True
@@ -521,6 +554,10 @@ def build_parser():
     i.add_argument("--format", choices=("snapshot", "claude-statusline"), default="snapshot")
     i.add_argument("--account")
     leaf(us, "status", cmd_usage_status)
+    fetch = leaf(us, 'fetch', cmd_usage_fetch)
+    fetch.add_argument('--account', required=True)
+    fetch.add_argument('--timeout', type=_number, default=20)
+    leaf(us, 'capture-claude', cmd_usage_capture)
 
     pc = top.add_parser("pace").add_subparsers(dest="verb", parser_class=CtlParser)
     pc.required = True
@@ -528,7 +565,8 @@ def build_parser():
 
     rt = top.add_parser("route").add_subparsers(dest="verb", parser_class=CtlParser)
     rt.required = True
-    rr = leaf(rt, "recommend", cmd_route_recommend)
+    route_parent = CtlParser(add_help=False)
+    rr = route_parent
     rr.add_argument("--type", required=True)
     rr.add_argument("--scope", required=True, choices=SCOPES)
     rr.add_argument("--risk", required=True, choices=("low", "medium", "high"))
@@ -540,6 +578,12 @@ def build_parser():
     rr.add_argument("--model")
     rr.add_argument("--estimate", action="append", type=_estimate_arg)
     rr.add_argument("--deadline")
+    rr.add_argument('--refresh', action='store_true', help='fetch Codex usage before advice; use existing Claude capture')
+    rr.add_argument('--codex-account', help='alias for the logged-in Codex CLI account')
+    rr.add_argument('--timeout', type=_number, default=20)
+    for parent, name in ((rt, 'recommend'), (top, 'advise')):
+        parser = parent.add_parser(name, parents=[common(), route_parent])
+        parser.set_defaults(func=cmd_route_recommend)
 
     tk = top.add_parser("task").add_subparsers(dest="verb", parser_class=CtlParser)
     tk.required = True
