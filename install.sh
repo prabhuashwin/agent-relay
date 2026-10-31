@@ -4,6 +4,8 @@
 # Part 1 puts agents, skills, scripts, status line and hooks in ~/.claude (user level).
 # Part 2 sets up the project: permissions, CLAUDE.md block, handoffs/.
 # Works in Git Bash on Windows, and on macOS/Linux. Backups go to ~/.claude/backups/claude-setup/.
+# Part 1 also registers a Bash guard hook (blocks git push, aws, destructive gh).
+# Run on the kit folder itself, it leaves the kit's CLAUDE.md unchanged.
 # Safe to run again.
 set -euo pipefail
 
@@ -13,13 +15,17 @@ TARGET=$1
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$TARGET" && pwd)
+SELF=0
+[ "$ROOT" = "$HERE" ] && SELF=1
 SRC="$HERE/claude-files"
 USER_DIR="$HOME/.claude"
 DEST="$ROOT/.claude"
 MD="$ROOT/CLAUDE.md"
 
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) WIN=1 ;; *) WIN=0 ;; esac
+PS=powershell
 winpath() { if [ "$WIN" = 1 ]; then cygpath -m "$1" 2>/dev/null || (cd "$1" && pwd -W); else printf '%s' "$1"; fi; }
+if [ "$WIN" = 1 ] && command -v pwsh >/dev/null 2>&1; then PS=pwsh; fi
 ROOTP=$(winpath "$ROOT")
 HEREP=$(winpath "$HERE")
 
@@ -55,18 +61,20 @@ if [ "$WIN" = 1 ]; then cp "$SRC"/scripts/*.ps1 "$USER_DIR/scripts/"
 else cp "$SRC"/scripts/*.sh "$USER_DIR/scripts/"; chmod +x "$USER_DIR"/scripts/*.sh; fi
 
 if [ "$WIN" = 1 ]; then
-  STATUS_CMD="powershell -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/statusline.ps1\""
-  HOOK_CMD="powershell -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/context-check.ps1\""
+  STATUS_CMD="$PS -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/statusline.ps1\""
+  HOOK_CMD="$PS -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/context-check.ps1\""
+  GUARD_CMD="$PS -NoProfile -ExecutionPolicy Bypass -File \"$USERP/.claude/scripts/bash-guard.ps1\""
 else
   STATUS_CMD="bash \"$HOME/.claude/scripts/statusline.sh\""
   HOOK_CMD="bash \"$HOME/.claude/scripts/context-check.sh\""
+  GUARD_CMD="bash \"$HOME/.claude/scripts/bash-guard.sh\""
 fi
 COMPACT_CMD='echo "[Context check] The conversation was just compacted. If this workstream has progress or decisions not yet saved under handoffs/, end your reply with one line offering to run /handoff."'
 USER_SETTINGS="$USERP/.claude/settings.json"
 
-"$PY" - "$USER_SETTINGS" "$STATUS_CMD" "$HOOK_CMD" "$COMPACT_CMD" <<'PYEOF'
+"$PY" - "$USER_SETTINGS" "$STATUS_CMD" "$HOOK_CMD" "$COMPACT_CMD" "$GUARD_CMD" <<'PYEOF'
 import json, os, sys
-p, sc, hc, cc = sys.argv[1:5]
+p, sc, hc, cc, gc = sys.argv[1:6]
 s = {}
 if os.path.exists(p):
     t = open(p, encoding="utf-8-sig").read().strip()
@@ -101,6 +109,9 @@ h["UserPromptSubmit"] = ups
 ss = drop(h.get("SessionStart", []), "just compacted")
 ss.append({"matcher": "compact", "hooks": [{"type": "command", "command": cc}]})
 h["SessionStart"] = ss
+pt = drop(h.get("PreToolUse", []), "bash-guard")
+pt.append({"matcher": "Bash", "hooks": [{"type": "command", "command": gc}]})
+h["PreToolUse"] = pt
 with open(p, "w", encoding="utf-8") as f:
     f.write(json.dumps(s, indent=2) + "\n")
 PYEOF
@@ -109,6 +120,13 @@ PYEOF
 BK_PROJ=$(newbackup "$(basename "$ROOT")")
 [ -d "$DEST" ] && cp -R "$DEST" "$BK_PROJ/dot-claude"
 [ -f "$MD" ] && cp "$MD" "$BK_PROJ/"
+
+# Keep only the 10 newest backups
+pruned=0
+while IFS= read -r old; do
+  [ -n "$old" ] && { rm -rf "$old" || true; pruned=$((pruned + 1)); }
+done < <(ls -1dt "$BK_ROOT"/*/ 2>/dev/null | tail -n +11 || true)
+[ "$pruned" -eq 0 ] || echo "Pruned $pruned old backup(s)."
 
 mkdir -p "$DEST"
 PROJ_SETTINGS="$ROOTP/.claude/settings.json"
@@ -163,33 +181,37 @@ for d in crew handoff recap; do rm -rf "$DEST/skills/$d"; done
 rmdir "$DEST/agents" "$DEST/skills" 2>/dev/null || true
 
 # CLAUDE.md: add or refresh our block, keep the project's own notes
-START='<!-- claude-setup:start -->'
-END='<!-- claude-setup:end -->'
-BLOCK=$(mktemp)
-{ echo "$START"; cat "$HERE/CLAUDE.md"; [ -z "$(tail -c 1 "$HERE/CLAUDE.md")" ] || echo; echo "$END"; } > "$BLOCK"
-if [ -f "$MD" ]; then
-  # Every line mentioning a marker must be exactly a marker, alternating start/end
-  marks=$(awk -v s="$START" -v e="$END" '
-    { sub(/\r$/, "") }
-    index($0, s) || index($0, e) { n++; if ($0 != (n % 2 ? s : e)) bad = 1 }
-    END { print (n == 0 ? "none" : (bad || n % 2 ? "bad" : "ok")) }' "$MD")
-  if [ "$marks" = ok ]; then
-    awk -v s="$START" -v e="$END" -v bf="$BLOCK" '
-      { sub(/\r$/, "") }
-      $0 == s { if (!done) { while ((getline l < bf) > 0) print l; done = 1 } skip = 1; next }
-      $0 == e { skip = 0; next }
-      !skip   { print }' "$MD" > "$MD.tmp"
-  elif [ "$marks" = bad ]; then
-    echo "CLAUDE.md: claude-setup markers are damaged (missing, out of order or not on their own line); left unchanged. Fix them and re-run."
-    cp "$MD" "$MD.tmp"
-  else
-    { cat "$MD"; printf '\n\n'; cat "$BLOCK"; } > "$MD.tmp"
-  fi
+if [ "$SELF" = 1 ]; then
+  echo "CLAUDE.md: this is the kit itself; left unchanged."
 else
-  { printf '# Project notes\n\n(Ask Claude to fill this in: build/test commands, layout, off-limits areas.)\n\n'; cat "$BLOCK"; } > "$MD.tmp"
+  START='<!-- claude-setup:start -->'
+  END='<!-- claude-setup:end -->'
+  BLOCK=$(mktemp)
+  { echo "$START"; cat "$HERE/CLAUDE.md"; [ -z "$(tail -c 1 "$HERE/CLAUDE.md")" ] || echo; echo "$END"; } > "$BLOCK"
+  if [ -f "$MD" ]; then
+    # Every line mentioning a marker must be exactly a marker, alternating start/end
+    marks=$(awk -v s="$START" -v e="$END" '
+      { sub(/\r$/, "") }
+      index($0, s) || index($0, e) { n++; if ($0 != (n % 2 ? s : e)) bad = 1 }
+      END { print (n == 0 ? "none" : (bad || n % 2 ? "bad" : "ok")) }' "$MD")
+    if [ "$marks" = ok ]; then
+      awk -v s="$START" -v e="$END" -v bf="$BLOCK" '
+        { sub(/\r$/, "") }
+        $0 == s { if (!done) { while ((getline l < bf) > 0) print l; done = 1 } skip = 1; next }
+        $0 == e { skip = 0; next }
+        !skip   { print }' "$MD" > "$MD.tmp"
+    elif [ "$marks" = bad ]; then
+      echo "CLAUDE.md: claude-setup markers are damaged (missing, out of order or not on their own line); left unchanged. Fix them and re-run."
+      cp "$MD" "$MD.tmp"
+    else
+      { cat "$MD"; printf '\n\n'; cat "$BLOCK"; } > "$MD.tmp"
+    fi
+  else
+    { printf '# Project notes\n\n(Ask Claude to fill this in: build/test commands, layout, off-limits areas.)\n\n'; cat "$BLOCK"; } > "$MD.tmp"
+  fi
+  mv "$MD.tmp" "$MD"
+  rm -f "$BLOCK"
 fi
-mv "$MD.tmp" "$MD"
-rm -f "$BLOCK"
 
 mkdir -p "$ROOT/handoffs"
 
@@ -198,13 +220,33 @@ echo "User backup:    $BK_USER"
 echo "Project backup: $BK_PROJ"
 
 # ---------- Part 3: self-test ----------
-TEST_IN="{\"transcript_path\":\"$HEREP/test-transcript.jsonl\",\"session_id\":\"install-test\"}"
+TEST_IN="{\"transcript_path\":\"$HEREP/claude-files/test-transcript.jsonl\",\"session_id\":\"install-test\"}"
 if [ "$WIN" = 1 ]; then
-  out=$(printf '%s' "$TEST_IN" | powershell -NoProfile -ExecutionPolicy Bypass -File "$USERP/.claude/scripts/context-check.ps1" || true)
+  out=$(printf '%s' "$TEST_IN" | $PS -NoProfile -ExecutionPolicy Bypass -File "$USERP/.claude/scripts/context-check.ps1" 2>&1 || true)
 else
-  out=$(printf '%s' "$TEST_IN" | bash "$USER_DIR/scripts/context-check.sh" || true)
+  out=$(printf '%s' "$TEST_IN" | bash "$USER_DIR/scripts/context-check.sh" 2>&1 || true)
 fi
 case "$out" in *"Context check"*) echo "Context check self-test: OK" ;; *) echo "Context check self-test: FAILED - paste this output to Claude" ;; esac
+
+TEST_IN2="{\"transcript_path\":\"$HEREP/claude-files/test-transcript-compacted.jsonl\",\"session_id\":\"install-test\",\"prompt\":\"hello\"}"
+rc2=0
+if [ "$WIN" = 1 ]; then
+  out2=$(printf '%s' "$TEST_IN2" | $PS -NoProfile -ExecutionPolicy Bypass -File "$USERP/.claude/scripts/context-check.ps1" 2>&1) || rc2=$?
+else
+  out2=$(printf '%s' "$TEST_IN2" | bash "$USER_DIR/scripts/context-check.sh" 2>&1) || rc2=$?
+fi
+if [ "$rc2" = 0 ] && [ -z "$out2" ]; then echo "Context check (post-compact) self-test: OK"; else echo "Context check (post-compact) self-test: FAILED - paste this output to Claude"; fi
+
+gtest() {  # $1 = command; runs the guard, prints its exit code
+  local j="{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$1\"}}" rc=0
+  if [ "$WIN" = 1 ]; then printf '%s' "$j" | $PS -NoProfile -ExecutionPolicy Bypass -File "$USERP/.claude/scripts/bash-guard.ps1" >/dev/null 2>&1 || rc=$?
+  else printf '%s' "$j" | bash "$USER_DIR/scripts/bash-guard.sh" >/dev/null 2>&1 || rc=$?; fi
+  echo "$rc"
+}
+g1=$(gtest "git push origin main"); g2=$(gtest "git status")
+if [ "$g1" != 0 ] && [ "$g2" = 0 ]; then echo "Bash guard self-test: OK"; else echo "Bash guard self-test: FAILED - paste this output to Claude (push exit=$g1, status exit=$g2)"; fi
+g3=$(gtest 'echo hi\ngit push')
+if [ "$g3" != 0 ]; then echo "Bash guard multi-line self-test: OK"; else echo "Bash guard multi-line self-test: FAILED - paste this output to Claude (exit=$g3)"; fi
 
 chk() { "$PY" -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$2" && echo "$1 settings.json: OK" || echo "$1 settings.json: INVALID - paste this output to Claude"; }
 chk user "$USER_SETTINGS"

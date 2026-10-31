@@ -7,7 +7,7 @@ Needs Git Bash (Windows) or bash, plus Python 3 on PATH. Give it a project folde
 What it does:
 - **User level** (shared by all projects, refreshed on every run): agents, skills and hook scripts in `~/.claude/agents/`, `skills/`, `scripts/`; status line and hooks in `~/.claude/settings.json`.
 - **Project level**: the CLAUDE.md block, a `permissions` block in `.claude/settings.json`, and a `handoffs/` folder.
-- Backups go to `~/.claude/backups/claude-setup/`. Safe to re-run.
+- Backups go to `~/.claude/backups/claude-setup/`; the 10 newest are kept. Running the installer on the kit folder itself skips the CLAUDE.md step. Safe to re-run.
 - Old per-project installs are migrated automatically (the old copies are removed).
 After changing agents/skills/scripts: run it once against any project. After changing CLAUDE.md or `project-settings.json`: run it on each project.
 Then start a NEW session in that folder (old sessions don't pick up changes).
@@ -26,12 +26,14 @@ Then start a NEW session in that folder (old sessions don't pick up changes).
 | `worker` agent | Sonnet | Implements one plan step and verifies it |
 | `reviewer` agent | Opus | Fresh-eyes review at the end; never edits |
 | `scout` agent | Haiku | Finds things across many files |
+| `oracle` agent | Fable | Second opinion on a risky plan or diff, or a diagnosis after two failures; does not edit, only with your OK |
 | `/crew` | - | Plan -> your approval -> workers -> review -> report |
 | `/handoff` | - | Saves the workstream to `handoffs/<topic>.md` + INDEX |
 | `/recap` | - | Verified summary of what a session did |
-| Context check | - | User-level hook in `~/.claude/scripts/`; warns in Claude's reply at 100k and 150k tokens. Log: `~/.claude/scripts/context-check.log` (confirms the hook fires) |
+| Context check | - | User-level hook in `~/.claude/scripts/`; warns at 100k; at 150k blocks prompts (slash commands still work) until /handoff then /clear, or /compact. Log: `~/.claude/scripts/context-check.log`, last 500 lines |
+| Bash guard | - | User-level PreToolUse hook: blocks git push, aws, and gh pr merge / repo delete / release, even through wrappers like rtk proxy or sh -c |
 | Status line | - | User-level, `~/.claude/scripts/`; context size at the bottom (terminal `claude` only) |
-| Permissions | - | Project `.claude/settings.json`: deny `git push` and `aws`; allow common read-only commands. Run pushes yourself in a terminal |
+| Permissions | - | Project `.claude/settings.json`: deny `git push`, `aws` and gh pr merge / repo delete / release create+delete (second layer behind the guard); allow common read-only commands. Run pushes yourself in a terminal |
 | Post-compact note | - | SessionStart hook (matcher `compact`): after `/compact`, reminds Claude to offer `/handoff` if progress is unsaved |
 
 ## Daily loop
@@ -39,7 +41,7 @@ Then start a NEW session in that folder (old sessions don't pick up changes).
    (e.g. `Search indexing: continue from handoffs/search-indexing.md`). New work: just describe it.
 2. **Work**: small fix -> ask directly. Anything bigger -> `/crew <task>`, read the plan, say go.
 3. **Long jobs** (tests over ~2 min, deploys): run them yourself in a terminal, paste only failures.
-4. **Context warning** at 100k -> `/compact` with a focus note; at 150k -> step 5.
+4. **Context warning** at 100k -> `/compact` with a focus note; at 150k prompts are blocked, so /handoff then /clear (step 5).
 5. **Finish or switch topic**: `/handoff`, then `/clear`. Pushes are blocked, so push from your own terminal if needed.
 6. **Weekly**: check the usage panel. Targets: ">150k context" under 30%, "8+ hour sessions" under 20%.
 
@@ -47,20 +49,13 @@ Then start a NEW session in that folder (old sessions don't pick up changes).
 Edit files under `claude-files/` (or `CLAUDE.md`), re-run the installer (see Install for which runs are needed), then commit the kit (it is a git repo).
 
 ## Where Fable fits
-Fable is the escalation tier, not part of the daily loop. Opus handles almost everything here.
-Use it only when:
-- Claude says **"Worth escalating"** (a step failed twice, or planner and reviewer disagree), or
-- a plan is **expensive or hard to undo** (paid eval run, data migration, production deploy) and you want a second opinion first, or
-- a bug has resisted two honest attempts (race conditions, flaky concurrency).
-
-How to use it cheaply:
-1. Run `/handoff` in the current session.
-2. Start a fresh session, switch the model to Fable.
-3. Ask one focused question: "Read handoffs/<topic>.md and <file:lines>. <specific question>."
-4. Take the answer back to an Opus session to implement. Don't keep working in Fable.
-
-A fresh, small session spends a fraction of what the same question costs inside a 150k-token session.
-Never use Fable as a worker, a reviewer of routine changes, or the default model.
+Fable is the escalation tier, not part of the daily loop. Opus handles almost everything here, and the main session should stay on Opus (check `/model`): a long session on Fable pays the top rate on every turn.
+The kit wraps Fable in the `oracle` subagent (does not edit, fresh context, one question, at most 40 lines back). Each call is cheap relative to a Fable session because it sees only what it is handed. It runs only when you say so; `/crew` offers it at three points:
+- **before approval**, when the plan is paid, hard to undo, or touches security, concurrency or a data migration;
+- **"Worth escalating"**, when a step has failed twice (it gets the 5-line summary and the files);
+- **after review**, when planner and reviewer disagree on something risky.
+You can also ask for it directly: "Ask oracle: read handoffs/<topic>.md and <file:lines>. <question>." Take the answer and keep implementing with Opus.
+Never use Fable as a worker, as the routine reviewer, or as the main session's model.
 
 ## Optional, later
 - **Context Mode** (MCP): keeps big command outputs out of the conversation. Worth a trial given the size of your test and CI logs. Read its README and permissions first.

@@ -11,9 +11,14 @@ if [ -n "$cu" ]; then
   a=$(num input_tokens); b=$(num cache_read_input_tokens); c=$(num cache_creation_input_tokens)
   tokens=$(( ${a:-0} + ${b:-0} + ${c:-0} ))
 elif [ -n "$path" ] && [ -f "$path" ]; then
-  pick() { grep '"type":"assistant"' | grep '"usage"' | grep -v '"isSidechain":true' | tail -n 1; }
+  # Last assistant usage line after the last compaction marker; prints COMPACTED if a compaction came last.
+  pick() { awk '
+    index($0,"\"isCompactSummary\":true") { last=""; c=1; next }
+    index($0,"\"type\":\"assistant\"") && index($0,"\"usage\"") && !index($0,"\"isSidechain\":true") { last=$0 }
+    END { if (last != "") print last; else if (c) print "COMPACTED" }'; }
   line=$(tail -n 300 "$path" | pick)
   [ -n "$line" ] || line=$(pick < "$path")
+  [ "$line" = COMPACTED ] && line=""
   num() { printf '%s' "$line" | grep -o "\"$1\":[0-9]*" | head -n 1 | sed 's/.*://'; }
   a=$(num input_tokens); b=$(num cache_read_input_tokens); c=$(num cache_creation_input_tokens)
   tokens=$(( ${a:-0} + ${b:-0} + ${c:-0} ))

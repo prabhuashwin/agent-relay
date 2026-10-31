@@ -3,7 +3,7 @@
 ## Sessions
 - One workstream per session. Ongoing work is listed in `handoffs/INDEX.md`; a session usually starts from one of those files.
 - When a task is finished or I change topic, remind me to run /handoff, then /clear.
-- If you get a "[Context check]" note, follow it.
+- If you get a "[Context check]" note, follow it. At 150k tokens my prompts are blocked until I /handoff or /compact, so warn me before that.
 
 ## Who does what
 - This main session is the **planner**. For anything bigger than a small change (more than one file or ~30 lines), use `/crew`: plan, get my approval, hand steps to `worker` subagents (Sonnet), then one `reviewer` pass (Opus).
@@ -17,7 +17,7 @@
 - Long-running jobs (over ~2 minutes): give me the command to run myself instead of waiting on it here, unless I ask you to run it.
 
 ## Safety
-- `git push` and the AWS CLI are blocked by this repo's permission settings. If a step needs one, give me the exact command to run myself.
+- `git push`, the AWS CLI and gh write commands (pr merge, repo delete, release create/delete) are blocked by a hook and by this repo's permission settings. If a step needs one, give me the exact command to run myself.
 - Never make other paid or live calls (paid model APIs, production endpoints) without my explicit OK in this session.
 - Don't start loops, monitors, or scheduled wake-ups unless I ask. If one is still running when we finish, tell me.
 

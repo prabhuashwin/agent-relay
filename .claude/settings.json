@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(rtk git push:*)",
+      "Bash(aws:*)",
+      "Bash(rtk aws:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(gh release create:*)",
+      "Bash(gh release delete:*)",
+      "Bash(rtk gh pr merge:*)",
+      "Bash(rtk gh repo delete:*)",
+      "Bash(rtk gh release create:*)",
+      "Bash(rtk gh release delete:*)"
+    ],
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(rtk git status:*)",
+      "Bash(rtk git diff:*)",
+      "Bash(rtk git log:*)",
+      "Bash(rtk git show:*)",
+      "Bash(rtk git branch:*)",
+      "Bash(ls:*)",
+      "Bash(rtk ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(rtk grep:*)",
+      "Bash(rtk read:*)"
+    ]
+  }
+}

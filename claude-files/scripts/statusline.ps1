@@ -11,20 +11,23 @@ if ($cu) {
   # Fast scan of the last 300 lines first; fall back to the whole file if no usage record there.
   $sets = @(
     { @(Get-Content -LiteralPath $path -Tail 300) },
-    { @(Select-String -LiteralPath $path -Pattern '"usage"' -SimpleMatch | ForEach-Object { $_.Line }) }
+    { @(Select-String -LiteralPath $path -Pattern '"usage"','"isCompactSummary":true' -SimpleMatch | ForEach-Object { $_.Line }) }
   )
   foreach ($get in $sets) {
     $lines = @(& $get)
+    $found = $false
     for ($i = $lines.Count - 1; $i -ge 0; $i--) {
+      if ($lines[$i] -like '*"isCompactSummary":true*') { $tokens = 0; $found = $true; break }
       $o = $null
       try { $o = $lines[$i] | ConvertFrom-Json } catch { continue }
       if ($o -and -not $o.isSidechain -and $o.message.usage) {
         $u = $o.message.usage
         $tokens = [int]$u.input_tokens + [int]$u.cache_read_input_tokens + [int]$u.cache_creation_input_tokens
+        $found = $true
         break
       }
     }
-    if ($tokens) { break }
+    if ($found) { break }
   }
 }
 $k = [math]::Round($tokens / 1000)

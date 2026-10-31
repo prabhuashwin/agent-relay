@@ -5,7 +5,7 @@ description: Complete, verified recap of what this session did. Use on /recap, "
 
 # Recap
 
-Check claims against the repo, not memory alone: run `git log --oneline` (since the session started), `git status` and `git diff --stat` in each repo this session touched.
+Check claims against the repo, not memory alone: run `git log --oneline -n 20` (or since the date the user gives you), `git status` and `git diff --stat` in each repo this session touched.
 
 Report:
 1. **Goal**: what was asked, and whether it changed along the way
