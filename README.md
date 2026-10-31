@@ -1,4 +1,6 @@
-# claude-setup
+# Agent Relay (claude-setup)
+
+Available as [agent-relay](https://github.com/prabhuashwin/agent-relay) and the original [claude-setup](https://github.com/ashwinp05/claude-setup). Both provide the same kit. Installed paths and command names retain `claude-setup` for compatibility; choose one checkout to install from.
 
 A small, installable kit that makes [Claude Code](https://claude.com/claude-code) and [Codex](https://developers.openai.com/codex) cheaper and safer to use day to day. It exists because usage limits matter: long sessions, oversized context, and expensive models doing cheap work burn through quota fast. The kit encodes one way of working and installs it into every project with a single script. Use it with Claude Code, Codex, or both subscriptions; the Claude-only install is the default.
 
@@ -31,15 +33,20 @@ A small, installable kit that makes [Claude Code](https://claude.com/claude-code
 
 ## Quick start
 
-Needs bash (Git Bash on Windows) and Python 3 (3.9 or newer). Codex is optional: without it on PATH, the Codex self-test is skipped, not failed.
+Needs bash (Git Bash on Windows) and Python 3 (3.9 or newer). Install and sign into the tools you intend to use separately. Codex is optional for installation, but automatic Codex fetching requires its CLI on PATH with a signed-in account and a compatible app-server.
 
 ```bash
-git clone <this-repo> claude-setup
-bash claude-setup/install.sh /path/to/your/project                  # Claude only (the original behaviour)
-bash claude-setup/install.sh --tool codex /path/to/your/project     # Codex only
-bash claude-setup/install.sh --tool both  /path/to/your/project     # both
-bash claude-setup/install.sh --tool both --dry-run .                 # print what would happen, change nothing
+git clone https://github.com/prabhuashwin/agent-relay.git agent-relay
+# Alternatively: git clone https://github.com/ashwinp05/claude-setup.git agent-relay
+cd agent-relay
+bash install.sh --tool both --dry-run /path/to/your/project  # preview
+bash install.sh --tool both /path/to/your/project            # install
+# Or choose one tool:
+# bash install.sh --tool claude /path/to/your/project
+# bash install.sh --tool codex /path/to/your/project
 ```
+
+Replace `/path/to/your/project` with the existing project you want to work on, not the kit checkout. On Windows, run the installer in **Git Bash**, for example `bash install.sh --tool both /c/GitCode/my-app`. Restart your tool sessions after installation.
 
 Options may come before or after the folder. `--skip-self-test` skips the post-install checks. A bad `--tool` value or unknown option exits 2 and changes nothing. Everything is validated before anything is written (Python, folder, settings JSON, CLAUDE.md/AGENTS.md markers); a failed check exits 1 and changes nothing.
 
@@ -53,11 +60,19 @@ Then open a new Claude Code or Codex session in that project. The installer is s
 
 **PATH.** For `usagectl` as a bare command, add `~/.claude-setup/bin` to your PATH. The installer prints the exact path and never edits your shell profile. Without it, run `python <kit>/coordinator/usagectl.py` or the full path to `bin/usagectl` (`bin/usagectl.cmd` on Windows cmd).
 
+In PowerShell, the installed runtime works without changing PATH:
+
+```powershell
+python "$HOME/.claude-setup/coordinator/usagectl.py" --help
+```
+
+In the commands below, replace `usagectl` with that Python invocation if needed.
+
 **RTK** (a token-saving command wrapper) is optional. The installer prints where it found it, or `RTK: not found; plain commands work, filter output with grep/tail`. Nothing depends on it.
 
 ## Using both subscriptions
 
-No windows are preset: plans differ, and some have no 5-hour or weekly limit at all. You describe yours once.
+No windows are preset: plans differ, and some have no 5-hour or weekly limit at all. You describe yours once. The example below has two Claude windows and one Codex weekly window. Plan names are descriptive labels; they do not determine your quotas. Skip `init` and existing account/window additions if already configured.
 
 ```bash
 usagectl init
@@ -68,7 +83,17 @@ usagectl window add --account claude-main --id seven_day --kind weekly  --units 
 usagectl window add --account codex-main  --id weekly    --kind weekly  --units percent --reserve 10
 ```
 
-Each morning, read your panels (Claude `/usage`; Codex `/status` or chatgpt.com/codex/settings/usage) and record **every configured window**, then ask for the plan. These values are illustrative; replace the remaining percentages and reset times with your own:
+If Codex also reports a five-hour window, add it before fetching:
+
+```bash
+usagectl window add --account codex-main --id five_hour --kind session --units percent --reserve 10
+```
+
+Fetching maps five-hour and weekly durations to configured shared percent windows. It rejects unknown, missing or ambiguous windows rather than guessing. Configure only the windows your account actually reports.
+
+### Manual usage (fallback)
+
+Use manual entry for unsupported allowances or when automatic capture is unavailable. Read your panels (Claude `/usage`; Codex `/status` or its usage page) and record every configured window that lacks a fresh automatic reading. These values are illustrative; replace percentages and reset times with your own:
 
 ```bash
 usagectl usage record --account claude-main --window five_hour --remaining 80 --resets-in 3h20m
@@ -87,14 +112,61 @@ Install or update with `--tool both` for the coordinator and Claude status scrip
 ```bash
 usagectl config capture-claude --account claude-main
 usagectl usage fetch --account codex-main
+usagectl usage status
+usagectl pace show
 usagectl advise --refresh --codex-account codex-main --type feature --scope small --risk medium --need edit
 ```
+
+**Daily workflow:** enable Claude capture once, use Claude normally in its terminal, then run `advise --refresh` before choosing your next task. The separate `usage fetch` command is useful when you only want to update usage. Inspect `usage status` for freshness and `pace show` for your remaining daily budget. Daily targets are local pacing guidance, not an additional provider allowance. Follow a switch recommendation using the checkpoint workflow below; the kit does not move your conversation automatically.
 
 Codex reads the account currently signed into its CLI; aliases are labels, not logins. Claude captures shared session and weekly limits when its terminal status line receives them after a response. `advise --refresh` fetches Codex before evaluating both accounts using the existing engine. It does not force a Claude response. Missing or stale Claude data still needs refreshing.
 
 Observations go to local `state/usage.jsonl`; an editable manual `usage.json` snapshot is not rewritten. Your configured timezone controls displayed timestamps. Claude's separate **Fable allowance stays manual**. Disable capture with `usagectl config capture-claude --disable`.
 
 **Deferred:** Codex hooks, Claude IDE usage capture, automatic Fable readings, launching model tasks in the other tool, and background polling. Estimates remain planning guidance, not quota enforcement. See [collector details](GUIDE.md#automatic-usage-collection).
+
+### Configuration, manual files and troubleshooting
+
+| File under `~/.claude-setup/` | Purpose |
+|---|---|
+| `config.json` | Account aliases, windows, reserves, timezone and Claude capture selection |
+| `state/usage.jsonl` | Observation history used by status, pacing and recommendations |
+| `usage.json` (optional, created by you) | Editable manual snapshot; import it explicitly, not watched automatically |
+
+On Windows the default location is `%USERPROFILE%\.claude-setup`. `CLAUDE_SETUP_HOME` can override it. These files are shared across projects and should stay outside Git. For IST, set `"timezone": "+05:30"` in `config.json`, then run `usagectl config validate`. Internal history stays in UTC; displayed times use your timezone.
+
+For a separate Fable allowance, configure a model-scoped window once:
+
+```bash
+usagectl window add --account claude-main --id fable_weekly --kind weekly --scope model:fable --units percent --reserve 10
+```
+
+Create an optional `usage.json` using this structure, replacing the example values and timestamps with fresh readings (keep the explicit timezone offset):
+
+```json
+{"schema":1,"observations":[
+  {"account":"claude-main","window":"fable_weekly","remaining":36,"units":"percent","resets_at":"2026-11-02T03:30:00+05:30","observed_at":"2026-10-31T14:43:00+05:30","source":"manual","confidence":"medium"}
+]}
+```
+
+Import it with `usagectl usage import /path/to/usage.json`. Each observation describes one account/window pair, not an entire subscription. Automatic collectors do not rewrite this file or refresh Fable. Include `--model fable` when requesting advice for a Fable task so its separate window applies.
+
+- **Codex fetch fails:** check the CLI login, CLI version and configured windows. The alias must match the active login. History remains intact; `advise --refresh` stops on a fetch error.
+- **Claude stays unknown/stale:** use the terminal with the installed status line and capture enabled, or record a fresh reading manually. Capture needs a quota-bearing status update; native IDE capture is not provided.
+- **Advice says refresh or has low confidence:** inspect missing/stale windows. Task history or explicit estimates are needed for stronger confidence; start with a bounded step.
+
+### Updating an installation
+
+Pull the checkout you installed from, then rerun the installer for each target project:
+
+```bash
+git pull --ff-only
+bash install.sh --tool both /path/to/your/project
+usagectl config validate
+usagectl selftest
+```
+
+The installer refreshes the shared runtime and scripts while retaining coordinator configuration and usage history. Existing installations do not need another `usagectl init`. Use one checkout consistently because both repositories install to the same locations.
 
 ## Example: continue a Claude task in Codex
 
