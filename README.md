@@ -72,6 +72,50 @@ In the commands below, replace `usagectl` with that Python invocation if needed.
 
 ## Using both subscriptions
 
+### Local continuity dashboard (v1)
+
+From a project repository, start the local dashboard:
+
+```powershell
+python "$HOME/.claude-setup/coordinator/usagectl.py" board serve
+```
+
+Open **http://127.0.0.1:8765**. After installing the updated kit, you can use
+`usagectl board serve` instead. Use `--port 8766` if the default port is occupied.
+The dashboard displays checkpoint-backed workstreams, recorded account capacity,
+routing explanations, verification evidence, and explicit ownership transfers.
+**Refresh usage** on a Codex account requests fresh limits from the current CLI login;
+the selected alias must represent that login. **Reload workspace** only reloads local
+state. While visible, the dashboard checks saved observations every five seconds,
+including new Claude terminal captures. Each window shows its reading age and source.
+Claude capture must be enabled; it cannot be fetched on demand. Failed fetches retain
+the last saved reading and show an error. No model tasks are launched.
+
+Create checkpoints with the existing checkpoint skill or `usagectl handoff prepare`.
+Plain handoff notes without a machine-readable checkpoint are not listed in v1.
+For terminal-only status, use `usagectl board status` (or add `--json`).
+
+Record an actual verification command from the project directory:
+
+```powershell
+usagectl board check --workstream search-index -- python -m unittest discover -q
+```
+
+Replace the example with your project's check. The last recorded command is shown
+as passed, failed, timed out, changed during execution, or stale after a repository
+change. A passing command does not mean every acceptance criterion is met.
+Checks supplied manually in a checkpoint remain explicitly labelled **reported**.
+
+To transfer, stop the source writer, release it in the dashboard, then claim with
+the destination account and copy the resume prompt. The release is tied to the
+checkpoint and repository state. Any change requires a fresh checkpoint/release.
+This is cooperative ownership: independent IDE agents cannot be stopped or locked
+by the dashboard. Once released through the board, use board transfers for future
+ownership changes; legacy handoff prepare/claim cannot bypass that workflow.
+
+See [the dashboard guide](docs/continuity-dashboard.md) for CLI transfers, recovery,
+storage, and verification limits.
+
 No windows are preset: plans differ, and some have no 5-hour or weekly limit at all. You describe yours once. The example below has two Claude windows and one Codex weekly window. Plan names are descriptive labels; they do not determine your quotas. Skip `init` and existing account/window additions if already configured.
 
 ```bash
@@ -123,7 +167,13 @@ Codex reads the account currently signed into its CLI; aliases are labels, not l
 
 Observations go to local `state/usage.jsonl`; an editable manual `usage.json` snapshot is not rewritten. Your configured timezone controls displayed timestamps. Claude's separate **Fable allowance stays manual**. Disable capture with `usagectl config capture-claude --disable`.
 
-**Deferred:** Codex hooks, Claude IDE usage capture, automatic Fable readings, launching model tasks in the other tool, and background polling. Estimates remain planning guidance, not quota enforcement. See [collector details](GUIDE.md#automatic-usage-collection).
+**Account polling:** `python coordinator/usagectl.py board serve --codex-account codex-main` refreshes the signed-in Codex account every 60 seconds while the server runs, including usage from other devices. Errors back off and remain visible. See [dashboard details](docs/continuity-dashboard.md).
+
+**Windows login startup:** `python coordinator/usagectl.py board startup enable --port 8766 --codex-account codex-main --experimental-claude-account claude-main` starts Relay hidden and enables bounded crash recovery. Use `board startup status` or `board startup disable` to inspect or remove it. Close a manually launched server on that port before enabling. See [startup details](docs/continuity-dashboard.md#windows-automatic-startup-v2-first-increment).
+
+**Experimental Claude account polling:** add `--experimental-claude-account claude-main` to `board serve` to read account-wide session, weekly and configured model limits every 180 seconds using the existing local Claude login. This undocumented endpoint currently includes Fable; it can change. No model requests are made. See [setup and limitations](docs/continuity-dashboard.md).
+
+**Deferred:** Codex hooks, Claude IDE usage capture, and launching model tasks in the other tool. Estimates remain planning guidance, not quota enforcement. See [collector details](GUIDE.md#automatic-usage-collection).
 
 ### Configuration, manual files and troubleshooting
 

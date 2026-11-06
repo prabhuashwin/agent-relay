@@ -11,3 +11,9 @@ class CtlError(Exception):
         super().__init__(message)
         self.message = message
         self.code = code
+
+
+class ProviderError(CtlError):
+    def __init__(self, message, kind='unavailable'):
+        super().__init__(message)
+        self.kind = kind

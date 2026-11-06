@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Agent Relay · Workspace</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="mark" aria-hidden="true">↗</span>Agent Relay</div>
+    <div class="header-right"><a href="#capacity-title">Accounts</a><a href="#workstreams-title">Workstreams</a><span class="local">Local workspace</span></div>
+  </header>
+  <main>
+    <div class="heading">
+      <div><p class="eyebrow">Overview</p><h1>Your workspace.</h1><p id="repo" class="muted">Connecting to your workspace…</p></div>
+      <button id="refresh"><span aria-hidden="true">↻</span> Reload workspace</button>
+    </div>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <section aria-labelledby="capacity-title">
+      <div class="section-head"><h2 id="capacity-title">Accounts</h2><span id="usage-sync" class="muted" role="status" aria-live="polite">Checking local observations…</span></div>
+      <div id="usage-alerts" role="status" aria-live="polite"></div>
+      <div id="accounts" class="accounts"></div>
+    </section>
+    <div class="workspace">
+      <section class="streams" aria-labelledby="workstreams-title">
+        <div class="section-head"><h2 id="workstreams-title">Workstreams <span id="count" class="count">0</span></h2></div>
+        <div id="workstreams"></div>
+      </section>
+      <section class="detail" aria-labelledby="detail-title">
+        <div class="section-head"><h2 id="detail-title">Next action</h2><span id="updated" class="muted"></span></div>
+        <details class="preferences"><summary>Routing preferences</summary>
+          <div class="filters">
+            <label>Task<select id="type"><option>feature</option><option>bugfix</option><option>refactor</option><option>review</option></select></label>
+            <label>Scope<select id="scope"><option>small</option><option>medium</option><option>large</option></select></label>
+            <label>Risk<select id="risk"><option>low</option><option selected>medium</option><option>high</option></select></label>
+          </div>
+        </details>
+        <div id="details"><p class="muted">Select a workstream to see what’s next.</p></div>
+      </section>
+    </div>
+    <footer><span>A clear next step. Across every session.</span><span>Runs locally on your machine</span></footer>
+  </main>
+</body>
+</html>

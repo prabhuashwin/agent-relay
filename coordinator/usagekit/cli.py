@@ -7,7 +7,7 @@ import os
 import re
 import sys
 
-from . import VERSION, collectors, config, gitutil, handoff, history, pacing, routing, store, usage
+from . import VERSION, checkpoint_lock, collectors, config, gitutil, handoff, history, pacing, routing, store, usage
 from .config import ALIAS_RE, SLUG_RE
 from .errors import CtlError, EXIT_CONFLICT
 from .timeutil import fmt_local, fmt_utc, now as clock_now, parse_date, parse_duration, parse_ts
@@ -377,6 +377,7 @@ def _owner_event(paths, ws, frm, to, now):
                                              "at": fmt_utc(now)}])
 
 
+@checkpoint_lock.command
 def cmd_handoff_prepare(args):
     paths, cfg, _z, now = _context()
     handoff.check_slug(args.workstream)
@@ -389,6 +390,10 @@ def cmd_handoff_prepare(args):
     path = handoff.checkpoint_path(root, args.workstream)
     old = handoff.load_checkpoint(path) if os.path.exists(path) else None
     changed = old is not None and old["owner"] != args.owner
+    if changed:
+        from .continuity import managed
+        if managed(paths, root, args.workstream):
+            raise CtlError('This workstream uses board release/claim; transfer ownership there before preparing.', EXIT_CONFLICT)
     if changed and not args.take_over:
         raise CtlError("checkpoint %s is owned by %s, not %s; the owner must hand over (usagectl handoff claim), "
                        "or pass --take-over if you are sure they stopped" % (args.workstream, old["owner"], args.owner),
@@ -423,6 +428,13 @@ def cmd_handoff_resume(args):
     root, _path, data = _load_for(args.workstream)
     mism = handoff.compare(root, data)
     prompt = handoff.resume_prompt(acct["provider"], data, "handoffs/%s.checkpoint.md" % args.workstream, args.to)
+    from .continuity import managed
+    if managed(_p, root, args.workstream):
+        prompt = '\n'.join(line for line in prompt.splitlines() if not line.startswith('Then take ownership:'))
+        if data['owner'] != args.to:
+            prompt += '\nDo not edit yet. Use usagectl board release/claim to transfer ownership, then obtain its resume prompt.'
+        else:
+            prompt += '\nThis account already owns the checkpoint. Future transfers must use usagectl board release/claim.'
     if mism:
         if not args.show_anyway:
             return _mismatch_exit(args, mism)
@@ -435,6 +447,7 @@ def cmd_handoff_resume(args):
     return 0
 
 
+@checkpoint_lock.command
 def cmd_handoff_claim(args):
     paths, cfg, _z, now = _context()
     if args.to not in cfg["accounts"]:
@@ -446,6 +459,9 @@ def cmd_handoff_claim(args):
         return _mismatch_exit(args, mism)
     previous = data["owner"]
     if previous != args.to:
+        from .continuity import managed
+        if managed(paths, root, args.workstream):
+            raise CtlError('This workstream uses board release/claim; release the source and claim with its ticket.', EXIT_CONFLICT)
         data["owner"] = args.to
         handoff.write_checkpoint(path, data)
         _owner_event(paths, args.workstream, previous, args.to, now)
@@ -603,6 +619,8 @@ def build_parser():
     tc.add_argument("--id", required=True)
 
     _add_handoff(top, leaf)
+    from .board_cli import add_parser as add_board
+    add_board(top, leaf)
     leaf(top, "selftest", cmd_selftest, help="run an internal check in a temporary state directory")
     return p
 
