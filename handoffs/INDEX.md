@@ -2,7 +2,7 @@
 
 | Topic | File | Updated | Status | Resume with |
 |---|---|---|---|---|
-| Continuity dashboard | continuity-dashboard.md | 2026-11-06 | 42 installer tests passed; local commit approved; Android trust and real reboot pending | `Continuity dashboard: continue from handoffs/continuity-dashboard.md` |
+| Continuity dashboard | continuity-dashboard.md | 2026-11-06 | Implementation committed; README and demo video ready locally; rate-limit recovery and reboot pending | `Continuity dashboard: continue from handoffs/continuity-dashboard.md` |
 | Automatic usage | automatic-usage-plan.md | 2026-10-31 | Done - verified and enabled locally, uncommitted | `Automatic usage: continue from handoffs/automatic-usage-plan.md` |
 | Kit rework | kit-rework.md | 2026-10-15 | Done - generic, user-level install, 3 local commits, no remote | `Kit rework: continue from handoffs/kit-rework.md` |
 | Kit hardening + decision log | kit-hardening.md | 2026-10-31 | Done - hardening 36f70c0, decision log bc7373d (DECISIONS.md, /decide, session brief hook) | `Kit hardening: continue from handoffs/kit-hardening.md` |
