@@ -31,8 +31,16 @@ def main():
         '-movflags', '+faststart', '-an',
         str(media / 'agent-relay-walkthrough.mp4'),
     ], check=True)
+    subprocess.run([
+        args.ffmpeg, '-hide_banner', '-loglevel', 'error', '-y',
+        '-i', str(media / 'agent-relay-walkthrough.mp4'),
+        '-filter_complex',
+        'fps=1/2,scale=960:-1:flags=lanczos,split[a][b];'
+        '[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer',
+        '-loop', '0', str(media / 'agent-relay-walkthrough.gif'),
+    ], check=True)
     shutil.copyfile(frames / 'relay-scene-0.png', media / 'agent-relay-poster.png')
-    print('Exported 66-second walkthrough and poster to docs/media')
+    print('Exported 66-second MP4, inline GIF and poster to docs/media')
 
 
 if __name__ == '__main__':

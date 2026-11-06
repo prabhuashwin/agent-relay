@@ -6,11 +6,11 @@ For developers using **Claude Code, Codex, or both**. Relay saves your next step
 
 ## See it in 66 seconds
 
-[![Watch Agent Relay: check capacity, save context, continue the work](docs/media/agent-relay-poster.png)](docs/media/agent-relay-walkthrough.mp4)
+![Animated Agent Relay walkthrough: check capacity, save context, and continue the work](docs/media/agent-relay-walkthrough.gif)
 
 **[Watch / download the video](docs/media/agent-relay-walkthrough.mp4)** · [Text version](docs/demo/README.md#transcript)
 
-Silent, captioned walkthrough with real dashboard UI and simulated data. If the preview does not play, download the MP4 and open it in your browser or video player.
+The animation loops automatically. Silent, captioned walkthrough with real dashboard UI and simulated data. Use the MP4 for pause, seek and fullscreen playback, or read the text version above.
 
 ## Check → Save → Continue
 

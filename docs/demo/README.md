@@ -2,7 +2,7 @@
 
 [Watch/download the video](../media/agent-relay-walkthrough.mp4) · [Visual guide](../media/relay-workflow.png)
 
-A 66-second, silent, captioned slideshow using captures of the real dashboard UI. All account readings, repository names, test results and ownership actions are simulated. No credentials, live provider requests or real ownership transfers are used. The demonstration explains the workflow; it is not evidence of an end-to-end production transfer.
+A 66-second, silent, captioned slideshow using captures of the real dashboard UI. The README embeds a looping GIF so visitors can watch inline; the MP4 provides playback controls. All account readings, repository names, test results and ownership actions are simulated. No credentials, live provider requests or real ownership transfers are used. The demonstration explains the workflow; it is not evidence of an end-to-end production transfer.
 
 ## Transcript
 
@@ -38,4 +38,4 @@ npx --yes --package @playwright/cli playwright-cli -s=relay-video close
 
 Pass `--ffmpeg C:/ffmpeg/bin/ffmpeg.exe` to the exporter if FFmpeg is not on PATH. Stop the static server with Ctrl+C when finished. No live Relay server is required.
 
-`capture-ui.js` intercepts API requests with fixtures and captures the actual dashboard. `walkthrough.html` supplies the captions and layout. `capture-frames.js` saves seven 1280×720 frames under `output/playwright/` and the visual guide under `docs/media/`. `export.py` creates the H.264 MP4 and poster. The video has no audio track; all explanation is visible in the frames and available in the transcript above.
+`capture-ui.js` intercepts API requests with fixtures and captures the actual dashboard. `walkthrough.html` supplies the captions and layout. `capture-frames.js` saves seven 1280×720 frames under `output/playwright/` and the visual guide under `docs/media/`. `export.py` creates the H.264 MP4, a 960×540 looping GIF, and poster. The video has no audio track; all explanation is visible in the frames and available in the transcript above.
