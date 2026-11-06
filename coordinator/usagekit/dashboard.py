@@ -130,6 +130,7 @@ def make_server(paths, root, port=8765, codex_account=None, claude_account=None)
     server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
     server.provider_poller = poller
     server.provider_pollers = pollers
+    server.action_token = token
     return server
 
 

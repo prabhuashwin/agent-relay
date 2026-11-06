@@ -145,9 +145,13 @@ Checkpoints stay in the project. Release tickets and verification records live i
 worktree path. Moving a checkout starts a separate local history. The lock file lives
 in that worktree's Git metadata directory and contains no task information.
 
-The HTTP server binds only to IPv4 loopback, checks Host/Origin, requires a per-server
-token for mutations, and serves only three fixed static assets. It is a single-user
-local tool, not a multi-user authenticated service. Do not expose it through a proxy.
+The default HTTP server binds only to IPv4 loopback, checks Host/Origin, requires a
+per-server token for mutations, and serves only three fixed static assets. Do not
+expose that server directly through a proxy. Optional personal remote profiles use
+an authenticated Waitress gateway behind Caddy HTTPS instead. See
+[remote access](remote-access.md) for Wi-Fi, private-network and public-domain modes,
+pairing, session revocation and setup. This remains a personal tool, not a multi-user
+service.
 
 ## Windows automatic startup (V2 first increment)
 

@@ -10,7 +10,7 @@ def command(args):
     if args.verb == 'startup':
         from . import startup
         if args.mode == 'enable':
-            result = startup.enable(paths, handoff.require_root(), args.port, args.codex_account, args.experimental_claude_account)
+            result = startup.enable(paths, handoff.require_root(), args.port, args.codex_account, args.experimental_claude_account, args.access_profile)
         elif args.mode == 'disable':
             result = startup.disable(paths)
         else:
@@ -19,6 +19,10 @@ def command(args):
         return 0
     root = handoff.require_root()
     if args.verb == 'serve':
+        if args.access_profile:
+            from .remote_dashboard import serve
+            serve(paths, root, args.access_profile, args.codex_account, args.experimental_claude_account)
+            return 0
         from .dashboard import serve
         serve(paths, root, args.port, args.codex_account, args.experimental_claude_account)
         return 0
@@ -49,12 +53,15 @@ def command(args):
 def add_parser(top, leaf):
     verbs = top.add_parser('board', help='local continuity dashboard and verified transfers').add_subparsers(dest='verb')
     verbs.required = True
+    from .access_cli import add_parser as add_access
+    add_access(verbs, leaf)
     status = leaf(verbs, 'status', command)
     status.add_argument('--type', default='feature')
     status.add_argument('--scope', choices=('small', 'medium', 'large'), default='small')
     status.add_argument('--risk', choices=('low', 'medium', 'high'), default='medium')
     server = leaf(verbs, 'serve', command)
     server.add_argument('--port', type=int, default=8765)
+    server.add_argument('--access-profile', help='use a configured remote HTTPS profile; profile determines gateway port')
     server.add_argument('--codex-account', help='poll current Codex CLI login every 60 seconds into this matching alias')
     server.add_argument('--experimental-claude-account', help='opt in to undocumented Claude account quota reads every 180 seconds using local CLI credentials')
     startup = leaf(verbs, 'startup', command)
@@ -62,6 +69,7 @@ def add_parser(top, leaf):
     startup.add_argument('--port', type=int, default=8766)
     startup.add_argument('--codex-account')
     startup.add_argument('--experimental-claude-account')
+    startup.add_argument('--access-profile', help='start the loopback gateway for this profile; Caddy runs separately')
     release = leaf(verbs, 'release', command)
     release.add_argument('--workstream', required=True)
     release.add_argument('--owner', required=True)

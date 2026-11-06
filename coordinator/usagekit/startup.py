@@ -11,12 +11,17 @@ from . import collectors, config
 from .errors import CtlError
 
 
-def launch_config(paths, root, port, codex_account, claude_account):
+def launch_config(paths, root, port, codex_account, claude_account, access_profile=None):
+    if access_profile:
+        from .access import load_profile
+        port = load_profile(paths, access_profile, root)['port']
     if not 1 <= port <= 65535:
         raise CtlError('startup port must be between 1 and 65535')
     cfg = config.load(paths)
     command = [sys.executable, str(Path(__file__).resolve().parent.parent / 'usagectl.py'),
                'board', 'serve', '--port', str(port)]
+    if access_profile:
+        command.extend(['--access-profile', access_profile])
     for alias, provider, flag in [(codex_account, 'codex', '--codex-account'),
                                  (claude_account, 'claude', '--experimental-claude-account')]:
         if alias:
@@ -83,7 +88,10 @@ def disable(paths):
     return startup_status(paths)
 
 
-def enable(paths, root, port, codex_account, claude_account):
+def enable(paths, root, port, codex_account, claude_account, access_profile=None):
+    if access_profile:
+        from .remote_dashboard import require_waitress
+        require_waitress()
     path, shortcut = locations(paths)
     if shortcut.exists():
         raise CtlError('Startup is already installed. Disable it before changing its configuration.')
@@ -96,7 +104,7 @@ def enable(paths, root, port, codex_account, claude_account):
                 msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
             except OSError:
                 raise CtlError('Previous Relay supervisor is still stopping. Wait a few seconds before enabling startup.') from None
-    cfg = launch_config(paths, root, port, codex_account, claude_account)
+    cfg = launch_config(paths, root, port, codex_account, claude_account, access_profile)
     pythonw = Path(sys.executable).with_name('pythonw.exe')
     if not pythonw.exists():
         raise CtlError('pythonw.exe is required for hidden Windows startup')

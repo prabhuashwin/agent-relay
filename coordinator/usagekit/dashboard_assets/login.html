@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pair device · Agent Relay</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/login.js" defer></script>
+</head>
+<body>
+  <header><div class="brand">Agent Relay</div><span class="local">Personal instance</span></header>
+  <main class="pairing">
+    <h1>Pair this device</h1>
+    <p>On your computer, generate a pairing code for this access profile. Codes expire after ten minutes and can be used once.</p>
+    <pre>usagectl board access pair --profile YOUR_PROFILE</pre>
+    <form id="pair-form">
+      <label>Device name<input id="device-name" maxlength="60" value="My phone" required autocomplete="off"></label>
+      <label>Pairing code<input id="pair-code" type="password" maxlength="128" required autocomplete="off" spellcheck="false"></label>
+      <p>This device can view the workspace, refresh usage and transfer ownership. The session lasts eight hours and can be revoked from your computer.</p>
+      <button id="pair-submit" type="submit" class="primary">Pair device</button>
+      <p id="pair-status" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+</body>
+</html>

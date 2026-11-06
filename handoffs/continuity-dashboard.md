@@ -1,48 +1,45 @@
-﻿# Handoff: Continuity dashboard - history and reserve alerts implemented; restart pending
+# Handoff: Continuity dashboard - mobile approved; supervised Wi-Fi active; polling migrated and live refresh verified
 
 ## Goal
-Local UI for checkpoint workstreams, explicit owner transfers, evidence freshness,
-explained routing, and account usage history/alerts.
+Personal Relay access over LAN/private/public HTTPS with authenticated devices,
+usage refresh, guarded transfers and a usable mobile dashboard.
 
 ## Done so far
-- Branch `feat/continuity-dashboard`; dashboard work collected in `feat: add continuity dashboard`. No push; repository policy reserves that command for the user.
-- Approved next increment implemented: seven days of local history per limit and dashboard reserve alerts.
-- `usage_history.py` filters invalid/future/old observations, preserves hourly first/low/high/last readings, and separates reset cycles with existing 15-minute tolerance. Unknown reset changes are labeled uncertain.
-- Shared-clock enrichment in `live_usage.py` and `continuity.py`; no new provider requests or storage.
-- `dashboard_assets/` adds expandable SVG history, exact timestamp/value tables, empty/restart states and reserve banners. Expanded history persists across polls; history clock changes do not invalidate routing.
-- Freshness expires on configured age/reset. Provider/manual/local failures suppress alerts. Later successful observations recover manual failures; retries alone do not. Expiry checked every five seconds while visible.
-- Read-only review found manual-failure recovery bug; fixed and regression tested. No other important review findings.
-- Verification: 63 focused Python tests passed, including seven history/HTTP tests; Node data-flow and syntax checks passed. Local HTTP test proves status/usage share history and never fetch providers.
-- Full `python -m unittest discover -s tests -q` run was stopped at the repository's two-minute limit without a result; user can run it locally before pushing.
-- Plan: `docs/superpowers/plans/2026-11-06-usage-history.md`; usage/restart guidance in `docs/continuity-dashboard.md`.
-- Earlier V2: `startup.py`, `relay_supervisor.py`, `windows_job.py` provide current-user hidden Windows login startup, bounded crash recovery, one state-home lock, and owned process cleanup. Six short-lived crashes stop retries; five minutes stable resets the counter.
-- Startup is enabled at :8766 with codex-main and claude-main; startup status reported running when resumed. Earlier disable/re-enable and owned-child crash recovery were live verified. This session did not restart it or fetch live quotas.
-- Earlier account polling: Codex every 60s; opt-in experimental Claude every 180s with 25s process deadline; protected manual refresh, backoff and health metadata. Prior live reads succeeded for both; Claude Fable uses model-scoped limits.
-- V1: `continuity.py`, `checkpoint_lock.py`, `board_cli.py`, `dashboard.py` implement checkpoint aggregation, release tickets, guarded claims and executed checks. Legacy CLI flows retained except board-managed ownership transfers.
-- UI: neutral light theme, compact cards, progressive disclosure, fresh remaining/used percentages and historical stale values. Five-second local polling rejects late responses. Old-server API mismatch shows restart guidance.
+- Branch `feat/relay-access`; remote-access and mobile changes approved for local commit; see branch HEAD for resulting commit. Prior `c510867` matches the earlier continuity-dashboard origin ref.
+- Three-mode remote access implemented: repository-bound profiles, single-use ten-minute pairing codes, eight-hour revocable hashed sessions, exact Host/Origin/CSRF guards, bounded Waitress loopback gateway behind Caddy. Prior security review fixes are regression-tested.
+- LAN profile `home` serves https://192.168.88.5:8443 through gateway 8770. Android pairing and latest mobile layout approved by user. Phone session survived process replacement/recovery.
+- Mobile: compact quota rows, timestamp grouping only for equal observations, Details & history, visible stale/error states, bottom section navigation with active state. UI UX Pro Max and Playwright installed as user skills.
+- Browser fixtures match three Claude quotas/one Codex quota. Widths 360/390/430/844/1280, 200% text, reduced motion, disclosure/nav/error checks passed. Screenshots: output/playwright (Git-excluded).
+- Persistent runtime: %LOCALAPPDATA%/AgentRelay/runtime with Waitress 3.0.2. Caddy executable/config/CA retain the same AgentRelay directory.
+- Current-user Startup shortcuts Agent Relay-wifi-gateway.lnk and Agent Relay-wifi-https.lnk run repo relay_supervisor.py with wifi-gateway.json/wifi-https.json. Separate locks/status files and owned process trees. Both children were deliberately stopped and recovered; verified HTTPS 200. Actual reboot/login not tested.
+- Approved migration complete: old :8766 startup disabled and stopped first; wifi-gateway.json now owns codex-main 60s and experimental claude-main 180s polling. Process inventory confirms one gateway tree (venv launcher plus child), no old polling instance. Timestamped config backups retained outside Git.
+- User explicitly approved live reads on resumption. Authenticated HTTPS GET usage and POST refresh for each provider returned 200; both connected with updated last-success times and Claude can_refresh=true. Temporary verification session revoked; existing phone session untouched. Gateway/Caddy supervision remains active.
+- Local operations/rollback: %LOCALAPPDATA%/AgentRelay/DEPLOYMENT.md. board startup CLI controls original :8766 only, not the two extra shortcuts.
+- Server certificate validates against exported Relay-WiFi-CA.crt for IP 192.168.88.5. Windows current-user root trust confirmed. Android Chrome screenshot still has certificate warning.
+- Fresh verification: 37 tests passed across test_access, test_remote_dashboard, test_remote_tls, test_relay_reliability, test_continuity. Both Node UI suites, JS syntax and diff checks pass. Transfer/refresh tests use isolated data/mocks, not production ownership or new live provider calls.
+- Installer suite now passed on explicit user request: `python -m unittest tests.test_install tests.test_review_fixes.InstallerReview -q`: 42 tests, 151.990s, OK (existing unclosed-file ResourceWarnings in tests/test_review_fixes.py). Earlier verification: 79 feature tests; 200 broader tests (2 skipped), 14 non-installer review regressions.
 
 ## Decisions and why
-- Reuse local observations for history; retain hourly extrema and separate reset cycles without extra provider traffic.
-- Alert at existing per-window reserves only with fresh valid readings and successful sync; dashboard-only delivery.
-- Existing decisions: Markdown owns goals/owners; SQLite outside Git stores releases/checks; transfers require stopped-source confirmation and single-use checkpoint-bound tickets.
-- Actual verification stays separate from reported checks; changed repository fingerprints invalidate evidence.
+- Personal owner devices only; HTTPS and authentication in every connectivity mode.
+- Mobile summaries and disclosure reduce scroll without hiding failed/stale readings.
+- Preserve CA/profile/session storage during supervised deployment.
+- Consolidate polling into the gateway so phone UI receives sync health and Claude refresh; stop the old instance first to avoid duplicate reads.
 
 ## Open issues / gotchas
-- Running :8766 backend has not been restarted for history/alerts. Static assets are served from disk; new UI shows history-unavailable/restart guidance with older backend.
-- Browser visual QA remains unverified: browser host unavailable; native Chrome fallback was stopped because policy could not determine current URL. No further UI automation attempted.
-- No Windows notifications, private mobile access, or model-task launching. Startup needs Windows login, awake PC, stable checkout/Python paths. Old :8765 server untouched.
-- Only machine-readable checkpoints appear. Manual edits/old CLI/independent agents bypass cooperative locks. Fingerprints exclude ignored files, environment and external dependencies.
-- Source checkout has new commands; rerun installer to update installed usagectl.
+- Android user cannot tap Chrome red X; suggested menu Page info or checking Android trusted-user CA list. Exact error and CA-list status still unknown. Public CA subject: Caddy Local Authority - 2026 ECC Root; Windows thumbprint D692E35FE4D345097699BCEE9426D9918F4989B7. Never transfer CA private key.
+- Host must stay awake, logged in, reachable at current Wi-Fi IP. No DHCP/router/firewall changes made. Public/VPN deployment remains inactive.
+- User explicitly authorized committing all existing remote/mobile workstream changes. Final read-only review found no blockers. Commit on feat/relay-access; no merge target requested. Push/gh writes remain user-only. Device checks below are still pending.
+- No actual production workstream release/claim performed while this writer remains active.
 
 ## Next steps
-1. User runs `git push -u origin feat/continuity-dashboard`; no remote publication has been performed by the agent.
-2. Restart startup-managed Relay to load backend: `python coordinator/usagectl.py board startup disable`, then `python coordinator/usagectl.py board startup enable --port 8766 --codex-account codex-main --experimental-claude-account claude-main`.
-3. Reload http://127.0.0.1:8766 and visually check history expansion, reset boundaries, empty states and responsive layout when browser access is available.
-4. Consider private mobile access or Windows notifications only with explicit scope. Integrate when requested.
+1. Reload paired Android phone and confirm account-sync status and refresh controls. Migration/live refresh are already verified; do not restart the old :8766 poller.
+2. Resolve Android CA trust with the user's error details; then physical-phone history/refresh and a deliberately isolated transfer check.
+3. Actual Windows restart/login remains pending. Baseline in %LOCALAPPDATA%/AgentRelay/pre-reboot-baseline.json; prior boot 2026-10-30T15:41:30.4229590Z. Both startup shortcut targets verified. After user restarts/logs in, compare boot time, check both supervisor processes and HTTPS/authenticated usage. Do not claim reboot verification from crash recovery.
+4. User alone runs push after local commit. Update handoff after certificate/reboot checks; no model generation calls required.
 
 ## Read first
-- docs/continuity-dashboard.md
-- docs/superpowers/plans/2026-11-06-usage-history.md
-- coordinator/usagekit/usage_history.py
-- coordinator/usagekit/dashboard_assets/app.js
-- tests/test_usage_history.py
+- docs/remote-access.md
+- docs/superpowers/plans/2026-11-06-mobile-dashboard.md
+- coordinator/usagekit/dashboard.py (polling health/refresh ownership)
+- coordinator/usagekit/remote_dashboard.py
+- %LOCALAPPDATA%/AgentRelay/DEPLOYMENT.md

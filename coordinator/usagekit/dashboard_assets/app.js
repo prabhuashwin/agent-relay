@@ -24,6 +24,10 @@ async function request(path, body) {
   const timeout = setTimeout(() => controller.abort(), 35000);
   try {
     const response = await fetch(path, opts);
+    if (response.status === 401) {
+      window.location.replace('/');
+      throw new Error('Session expired or revoked. Pair this device again.');
+    }
     if (response.status === 404 && path.startsWith('/api/usage')) {
       throw new Error('Dashboard server is outdated. Stop it with Ctrl+C, then restart: python coordinator/usagectl.py board serve');
     }
@@ -47,13 +51,26 @@ async function refresh(fromUsage = false) {
   finally { busy=false;$('refresh').disabled=Boolean(fetchingUsage);if(state)renderAccounts(); }
 }
 function renderAccounts() {
+  $('remote-access').hidden = !state.remote_access?.authenticated;
+  if (state.remote_access?.authenticated) {
+    $('device-session').textContent = state.remote_access.label;
+    $('logout').disabled = busy || Boolean(fetchingUsage);
+  }
   renderUsageAlerts();
   const opened = new Set(Array.from($('accounts').querySelectorAll('details[open]')).map(n => n.dataset.window));
+  const accountOpen = new Map(Array.from($('accounts').querySelectorAll('details'))
+    .filter(n => n.className === 'account-details').map(n => [n.dataset.window, n.open]));
   const focused = document.activeElement?.id;
   const box=$('accounts');box.replaceChildren();
   if(state.setup_needed){box.append(el('div','No accounts configured. Run usagectl init, then add your accounts and usage windows.','empty'));return;}
   for(const [alias,a] of Object.entries(state.accounts)) {
     const card=el('article',null,'account');const title=el('div',null,'account-title');title.append(el('h3',alias),badge(a.state));card.append(title,el('div',a.provider+' · '+a.plan,'muted'));
+    card.append(renderQuotaSummary(a));
+    const info = el('details', null, 'account-details');
+    info.dataset.window = 'account:' + alias;
+    info.open = accountOpen.has(info.dataset.window) ? accountOpen.get(info.dataset.window) : !window.matchMedia?.('(max-width: 600px)').matches;
+    const more = el('summary', 'Details & history'); more.id = 'account-more-' + alias;
+    info.append(more);
     if (a.provider === 'codex' || a.can_refresh) {
       const controls = el('div', null, 'usage-controls');
       const button = el('button', fetchingUsage === alias ? 'Fetching usage…' : 'Refresh usage');
@@ -63,20 +80,20 @@ function renderAccounts() {
       controls.append(button, el('p', a.provider === 'claude' ?
         'Experimental account sync using your local Claude login. Includes usage from other devices.' :
         'Reads the current Codex CLI login. This alias must match that account.', 'muted'));
-      card.append(controls);
+      info.append(controls);
       if (a.polling) {
-        card.append(el('p', a.polling.state === 'error' ? a.polling.error :
+        info.append(el('p', a.polling.state === 'error' ? a.polling.error :
           'Account sync every ' + a.polling.interval_seconds + 's · ' +
           (a.polling.last_success ? 'last success ' + age(a.polling.last_success) : 'waiting for provider'), 'usage-hint'));
-        if (a.polling.state === 'error') card.append(el('p',
+        if (a.polling.state === 'error') info.append(el('p',
           'Last successful sync: ' + (a.polling.last_success ? date(a.polling.last_success) : 'none') +
           ' · Retry: ' + date(a.polling.next_attempt) + ' · Failed attempts: ' + (a.polling.failures || 1), 'muted'));
       } else {
-        card.append(el('p', 'Automatic account sync is off. Start the server with --codex-account ' + alias, 'usage-hint'));
+        info.append(el('p', 'Automatic account sync is off. Start the server with --codex-account ' + alias, 'usage-hint'));
       }
     } else {
-      card.append(el('p', a.capture_enabled ? 'Terminal capture enabled · updates after Claude responses. No on-demand fetch.' : 'Terminal capture is off for this account. Enable it to receive updates.', 'usage-hint'));
-      if (!a.capture_enabled) card.append(el('pre', 'usagectl config capture-claude --account ' + alias));
+      info.append(el('p', a.capture_enabled ? 'Terminal capture enabled · updates after Claude responses. No on-demand fetch.' : 'Terminal capture is off for this account. Enable it to receive updates.', 'usage-hint'));
+      if (!a.capture_enabled) info.append(el('pre', 'usagectl config capture-claude --account ' + alias));
     }
     if (usageErrors[alias]) card.append(el('p', usageErrors[alias] + ' Last saved readings are shown below.', 'usage-error'));
     const windows = el('div', null, 'windows');
@@ -109,10 +126,35 @@ function renderAccounts() {
       row.append(renderHistory(alias, w, opened));
       windows.append(row);
     }
-    card.append(windows);
+    info.append(windows);
+    card.append(info);
     box.append(card);
   }
-  if (focused && focused.startsWith('fetch-')) $(focused)?.focus();
+  if (focused && (focused.startsWith('fetch-') || focused.startsWith('account-more-'))) $(focused)?.focus();
+}
+function renderQuotaSummary(account) {
+  const summary = el('div', null, 'quota-summary');
+  summary.append(el('p', 'Remaining', 'quota-heading'));
+  const timestamp = account.windows[0]?.observed_at;
+  const sharedTime = timestamp && account.windows.every(w => w.observed_at === timestamp);
+  const labels = {five_hour:'Session', seven_day:'Weekly', weekly:'Weekly', fable_weekly:'Fable weekly'};
+  for (const w of account.windows) {
+    const item = el('div', null, 'quota-item');
+    const current = w.remaining != null && ['available','exhausted'].includes(w.state) && account.polling?.state !== 'error';
+    const line = el('div', null, 'quota-line');
+    line.append(el('span', labels[w.window] || w.window.replaceAll('_',' ')),
+      el('strong', current ? String(w.remaining) + (w.units === 'percent' ? '%' : ' ' + w.units) : '\u2014'));
+    item.append(line);
+    if (current && w.units === 'percent' && Number.isFinite(w.remaining)) {
+      const meter = el('meter'); meter.min=0; meter.max=100; meter.value=Math.max(0,Math.min(100,w.remaining));
+      meter.setAttribute('aria-label', (labels[w.window] || w.window) + ' remaining'); item.append(meter);
+    }
+    if (!current || !sharedTime) item.append(el('p', current ? 'Updated ' + (w.observed_at ? age(w.observed_at) : 'at an unknown time') : 'Current usage unavailable', current ? 'quota-caption' : 'quota-caption quota-warning'));
+    summary.append(item);
+  }
+  if (sharedTime) summary.append(el('p', 'Updated ' + age(timestamp), 'quota-freshness'));
+  if (account.polling?.state === 'error') summary.append(el('p', 'Account sync failed. Open details for the error.', 'usage-error'));
+  return summary;
 }
 function renderUsageAlerts() {
   const box = $('usage-alerts');
@@ -224,11 +266,12 @@ async function pollUsage() {
     if (fetchingUsage || busy || epoch !== usageEpoch) return;
     const changed = readingsKey(state.accounts) !== readingsKey(result.accounts);
     state.accounts = result.accounts; state.action_token = result.action_token;
+    state.remote_access = result.remote_access;
     recoverUsageErrors(result.accounts);
     usageUnavailable = false;
     state.setup_needed = !Object.keys(result.accounts).length;
     renderAccounts();
-    $('usage-sync').textContent = result.warnings.length ? result.warnings.join(' ') : 'Local observations checked ' + new Date(result.checked_at).toLocaleTimeString() + ' · every 5s';
+    $('usage-sync').textContent = result.warnings.length ? result.warnings.join(' ') : 'Saved readings · auto-updating';
     if (changed && state.workstreams.length) $('updated').textContent = 'Usage changed · reload workspace to update routing';
   } catch (error) {
     usageUnavailable = true; renderUsageAlerts();
@@ -309,7 +352,20 @@ async function action(button, path, body) {
     }
   } catch (error) { note(error.message); button.disabled = false; }
 }
+function updateMobileNavigation() {
+  const inWorkstreams = $('workspace').getBoundingClientRect().top <= window.innerHeight * .45;
+  $('nav-accounts').setAttribute('aria-current', inWorkstreams ? 'false' : 'location');
+  $('nav-workstreams').setAttribute('aria-current', inWorkstreams ? 'location' : 'false');
+}
+document.addEventListener('scroll', updateMobileNavigation, {passive:true});
+window.addEventListener?.('resize', updateMobileNavigation);
 $('refresh').onclick=refresh;for(const id of ['type','scope','risk'])$(id).onchange=refresh;
-refresh().then(pollUsage);
+$('logout').onclick = async () => {
+  if (busy || fetchingUsage) return;
+  $('logout').disabled = true;
+  try { await request('/api/logout', {}); window.location.replace('/'); }
+  catch (error) { note(error.message); $('logout').disabled = false; }
+};
+refresh().then(pollUsage).then(updateMobileNavigation);
 setInterval(() => { if (state && !document.hidden) renderUsageAlerts(); pollUsage(); }, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) pollUsage(); });

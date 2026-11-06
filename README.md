@@ -116,6 +116,12 @@ ownership changes; legacy handoff prepare/claim cannot bypass that workflow.
 See [the dashboard guide](docs/continuity-dashboard.md) for CLI transfers, recovery,
 storage, and verification limits.
 
+**Personal remote access:** choose same-Wi-Fi, private-network (including VPN), or
+public-HTTPS profiles. All require HTTPS and device pairing, and support usage refresh
+and guarded ownership transfers. Setup is opt-in; default access stays local-only.
+See [remote access setup](docs/remote-access.md) for dependencies, configuration,
+activation and revocation.
+
 No windows are preset: plans differ, and some have no 5-hour or weekly limit at all. You describe yours once. The example below has two Claude windows and one Codex weekly window. Plan names are descriptive labels; they do not determine your quotas. Skip `init` and existing account/window additions if already configured.
 
 ```bash

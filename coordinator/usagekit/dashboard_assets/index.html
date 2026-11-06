@@ -10,20 +10,20 @@
 <body>
   <header>
     <div class="brand"><span class="mark" aria-hidden="true">↗</span>Agent Relay</div>
-    <div class="header-right"><a href="#capacity-title">Accounts</a><a href="#workstreams-title">Workstreams</a><span class="local">Local workspace</span></div>
+    <div class="header-right"><a href="#capacity-title">Accounts</a><a href="#workstreams-title">Workstreams</a><span class="local">Personal workspace</span><div id="remote-access" hidden><span id="device-session"></span><button id="logout">Sign out</button></div></div>
   </header>
   <main>
     <div class="heading">
       <div><p class="eyebrow">Overview</p><h1>Your workspace.</h1><p id="repo" class="muted">Connecting to your workspace…</p></div>
-      <button id="refresh"><span aria-hidden="true">↻</span> Reload workspace</button>
+      <button id="refresh"><span aria-hidden="true">↻</span> <span class="refresh-label">Reload workspace</span></button>
     </div>
     <div id="notice" role="status" aria-live="polite"></div>
-    <section aria-labelledby="capacity-title">
+    <section id="capacity" aria-labelledby="capacity-title">
       <div class="section-head"><h2 id="capacity-title">Accounts</h2><span id="usage-sync" class="muted" role="status" aria-live="polite">Checking local observations…</span></div>
       <div id="usage-alerts" role="status" aria-live="polite"></div>
       <div id="accounts" class="accounts"></div>
     </section>
-    <div class="workspace">
+    <div id="workspace" class="workspace">
       <section class="streams" aria-labelledby="workstreams-title">
         <div class="section-head"><h2 id="workstreams-title">Workstreams <span id="count" class="count">0</span></h2></div>
         <div id="workstreams"></div>
@@ -42,5 +42,6 @@
     </div>
     <footer><span>A clear next step. Across every session.</span><span>Runs locally on your machine</span></footer>
   </main>
+  <nav class="mobile-nav" aria-label="Dashboard sections"><a id="nav-accounts" href="#capacity" aria-current="location">Accounts</a><a id="nav-workstreams" href="#workspace" aria-current="false">Workstreams</a></nav>
 </body>
 </html>

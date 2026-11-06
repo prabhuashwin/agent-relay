@@ -10,21 +10,25 @@ class Element {
   replaceChildren(...nodes) { this.children = nodes; }
   setAttribute(name, value) { this[name] = value; }
   get firstElementChild() { return this.children[0]; }
-  querySelectorAll() { return this.children.flatMap(n => [n, ...n.querySelectorAll()]).filter(n => n.tagName === 'details' && n.open); }
+  querySelectorAll(selector) { return this.children.flatMap(n => [n, ...n.querySelectorAll(selector)]).filter(n => n.tagName === 'details' && (selector !== 'details[open]' || n.open)); }
   focus() {}
+  getBoundingClientRect() { return {top:this.top ?? 1000}; }
 }
-const ids = ['accounts', 'usage-alerts', 'notice', 'repo', 'updated', 'usage-sync', 'refresh', 'type', 'scope', 'risk', 'workstreams', 'count', 'details'];
+const ids = ['accounts', 'usage-alerts', 'remote-access', 'device-session', 'logout', 'notice', 'repo', 'updated', 'usage-sync', 'refresh', 'type', 'scope', 'risk', 'workstreams', 'count', 'details', 'workspace', 'nav-accounts', 'nav-workstreams'];
 const elements = Object.fromEntries(ids.map(id => [id, new Element('div')]));
 const windows = remaining => [{window:'weekly', remaining, units:'percent', scope:'shared', state:'available', observed_at:'2026-11-06T10:00:00Z'}];
 const accounts = remaining => ({codex:{provider:'codex', plan:'test', state:'available', windows:windows(remaining)}});
 let current = 80, delayedPoll, holdPoll = false, failPoll = false, outdatedServer = false;
+let redirect, expired = false;
 const requests = [];
 const document = {hidden:false, activeElement:null, createElement:tag => new Element(tag),
   createElementNS:(_ns, tag) => new Element(tag),
   getElementById:id => elements[id], addEventListener() {}};
 const context = vm.createContext({document, URLSearchParams, AbortController, setTimeout, clearTimeout,
+    window:{innerHeight:800,matchMedia:()=>({matches:true}),location:{replace:value => { redirect = value; }}},
   setInterval(){}, console, fetch:async(path) => {
     requests.push(path);
+    if (expired) return {ok:false,status:401,json:async()=>({error:'Pair again'})};
     if(path === '/api/usage' && outdatedServer) return {ok:false,status:404,json:async()=>({error:'not found'})};
     if(path === '/api/usage' && failPoll) throw new Error('offline');
     if(path === '/api/usage' && holdPoll) {
@@ -41,7 +45,29 @@ async function main() {
   await flush(); await flush();
   assert.equal(run('state.accounts.codex.windows[0].remaining'), 80);
   assert.equal(run('busy'), false);
-  assert.equal(elements.accounts.children[0].children[2].children[0].disabled, false, 'refresh button enabled after initial load');
+  const walk = node => [node, ...node.children.flatMap(walk)];
+  const accountNodes = () => walk(elements.accounts);
+  const disclosure = () => accountNodes().find(n => n.className === 'account-details');
+  assert.ok(disclosure(), 'account controls/history have one disclosure');
+  assert.equal(disclosure().open, false, 'phone details start collapsed');
+  assert.ok(accountNodes().some(n => n.className === 'quota-summary'), 'phone summary is available before opening details');
+  disclosure().open = true; run('renderAccounts()');
+  assert.equal(disclosure().open, true, 'polling preserves expanded account');
+  disclosure().open = false; run('renderAccounts()');
+  assert.equal(disclosure().open, false, 'polling preserves collapsed account');
+  const sameTime = run(`renderQuotaSummary({windows:[
+    {window:'five_hour',remaining:78,units:'percent',state:'available',observed_at:'2026-11-06T10:00:00Z'},
+    {window:'seven_day',remaining:33,units:'percent',state:'available',observed_at:'2026-11-06T10:00:00Z'}]})`);
+  assert.equal(walk(sameTime).filter(n=>n.className==='quota-freshness').length,1,'matching timestamps share one freshness label');
+  const mixedTime = run(`renderQuotaSummary({windows:[
+    {window:'five_hour',remaining:78,units:'percent',state:'available',observed_at:'2026-11-06T10:00:00Z'},
+    {window:'seven_day',remaining:33,units:'percent',state:'available',observed_at:'2026-11-05T10:00:00Z'}]})`);
+  assert.equal(walk(mixedTime).filter(n=>n.className==='quota-caption').length,2,'different timestamps remain separate');
+  elements.workspace.top = 50; run('updateMobileNavigation()');
+  assert.equal(elements['nav-workstreams']['aria-current'],'location','workstreams highlighted while viewing section');
+  elements.workspace.top = 900; run('updateMobileNavigation()');
+  assert.equal(elements['nav-accounts']['aria-current'],'location','accounts highlighted after scrolling back');
+  assert.equal(accountNodes().find(n => n.id === 'fetch-codex').disabled, false, 'refresh button enabled after initial load');
   assert.equal(requests.filter(p=>p==='/api/usage/refresh').length, 0, 'initial/local reads do not fetch provider');
 
   holdPoll = true;
@@ -100,6 +126,15 @@ async function main() {
   run('usageErrors.codex = "manual failed"; usageFailureAt.codex = 0');
   await run('pollUsage()');
   assert.equal(run('usageErrors.codex'), undefined, 'later saved observation recovers manual failure');
+  run('state.remote_access = {authenticated:true,label:"My phone",mode:"private"}; renderAccounts()');
+  assert.equal(elements['remote-access'].hidden, false, 'authenticated device controls shown');
+  assert.match(elements['device-session'].textContent, /My phone/);
+  await elements.logout.onclick();
+  assert.equal(redirect, '/', 'logout returns to pairing');
+  assert.ok(requests.includes('/api/logout'));
+  redirect = undefined;
+  expired = true; await run('pollUsage()');
+  assert.equal(redirect, '/', 'expired session returns to device pairing');
   console.log('Dashboard UI data-flow checks passed');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

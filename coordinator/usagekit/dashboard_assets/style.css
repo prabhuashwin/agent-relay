@@ -124,3 +124,79 @@ footer {margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:
 .history-table th,.history-table td {padding:7px;border-bottom:1px solid var(--line);vertical-align:top}
 .history-table th {position:sticky;top:0;background:#fff;color:#62697d}
 .history-boundary {background:#f0f3fa;color:#40547a;font-weight:600}
+[hidden] {display:none!important}
+#remote-access {display:flex;align-items:center;gap:10px;font-size:12px}
+.pairing {max-width:560px;margin:40px auto}
+.pairing form {display:grid;gap:18px;margin-top:24px}
+.pairing input {display:block;box-sizing:border-box;width:100%;margin-top:7px;padding:12px;border:1px solid #dce0e8;border-radius:7px;font:inherit}
+.pairing p {color:#62697d;font-size:13px;line-height:1.7}
+@media(max-width:480px) {.header-right .local{display:none}#device-session{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pairing{margin:20px auto}}
+
+/* Account summaries and persistent navigation are specific to small screens. */
+.quota-summary,.mobile-nav {display:none}
+.account-details {margin-top:12px}
+.account-details>summary {font-size:12px;padding:10px 0;color:var(--accent)}
+@media(max-width:600px) {
+  :root {--muted:#606572}
+  html {scroll-padding-bottom:100px}
+  header {height:auto;min-height:56px;padding:8px 16px;gap:8px;flex-wrap:wrap}
+  .brand {font-size:14px;gap:8px}
+  .mark {width:26px;height:26px}
+  .header-right {margin-left:auto;gap:8px;min-width:0}
+  .header-right .local {display:none}
+  #remote-access {gap:8px;font-size:12px}
+  #device-session {display:none}
+  main {padding:16px 16px calc(90px + env(safe-area-inset-bottom))}
+  .heading {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;margin-bottom:20px;align-items:center}
+  .heading>div {min-width:0}
+  .eyebrow {display:none}
+  h1 {font-size:22px;letter-spacing:-.5px;margin:0 0 4px}
+  #repo {font-family:inherit;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+  #refresh {width:48px;height:48px;justify-content:center;padding:0;font-size:24px}
+  .refresh-label {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  button,select {min-height:48px}
+  button {touch-action:manipulation}
+  button:active,.mobile-nav a:active {background:#e9edff}
+  h2 {font-size:16px}
+  .section-head {gap:6px;margin-bottom:12px;align-items:flex-start}
+  #usage-sync {flex-basis:100%;font-size:12px;line-height:1.5}
+  .accounts {grid-template-columns:minmax(0,1fr);gap:12px;margin-bottom:24px}
+  .account {padding:16px;border-radius:14px}
+  .account-title {align-items:flex-start}
+  .account-title h3 {font-size:16px;min-width:0}
+  .account>.muted {font-size:12px}
+  .badge {font-size:12px;white-space:normal}
+  .quota-summary {display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:16px}
+  .quota-heading,.quota-freshness {font-size:12px;line-height:1.5;color:var(--muted);margin:0}
+  .quota-item {min-width:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(32px,.8fr) minmax(48px,auto);gap:4px 12px;align-items:center}
+  .quota-line {display:contents;font-size:14px}
+  .quota-line>span {grid-column:1;grid-row:1;overflow-wrap:anywhere}
+  .quota-line strong {grid-column:3;grid-row:1;text-align:right;font-size:22px;font-weight:650;letter-spacing:-.6px;overflow-wrap:anywhere}
+  .quota-item meter {grid-column:2;grid-row:1;height:6px;margin:0}
+  .quota-item>.quota-caption {grid-column:1/-1}
+  .quota-caption {font-size:12px;line-height:1.5;color:var(--muted);margin:0;overflow-wrap:anywhere}
+  .quota-warning {color:#895121}
+  .quota-summary>.usage-error {grid-column:1/-1;margin:0}
+  .account-details {margin-top:12px;border-top:1px solid var(--line)}
+  .account-details>summary {min-height:48px;padding:14px 0;font-size:14px;line-height:20px;color:#344bb5}
+  .account-details[open]>summary {margin-bottom:4px}
+  .usage-hint,.usage-controls p,.muted,.observation-age {font-size:12px;line-height:1.5}
+  .usage-controls {flex-wrap:wrap;gap:8px;margin-top:8px}
+  .usage-controls p {max-width:none;flex:1 1 150px}
+  .windows {grid-template-columns:minmax(0,1fr);gap:16px;margin-top:16px}
+  .window {border-top:1px solid var(--line);padding-top:16px}
+  .window-label,.window-value span {font-size:14px}
+  .observation>summary,.usage-history>summary {min-height:48px;padding:14px 0;font-size:14px;line-height:20px}
+  .observation p {font-size:12px}
+  .detail,.stream {padding:16px}
+  .actions {flex-wrap:wrap}
+  .actions button {flex:1 1 120px}
+  .confirm {font-size:14px;align-items:center}
+  input[type=checkbox] {width:24px;height:24px}
+  select,textarea,.pairing input {font-size:16px}
+  .mobile-nav {position:fixed;z-index:10;bottom:0;left:0;right:0;display:flex;gap:8px;padding:8px 16px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -4px 20px #23252e08}
+  .mobile-nav a {flex:1;min-height:48px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--muted);background:#fff;font-size:14px;font-weight:500;text-decoration:none}
+  .mobile-nav a[aria-current="location"] {color:#344bb5;background:#e9edff;font-weight:700;box-shadow:inset 0 3px #4359d8}
+  #capacity,#workspace {scroll-margin-top:16px}
+  footer {margin-top:24px;flex-direction:column;gap:6px}
+}

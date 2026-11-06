@@ -1,0 +1,2 @@
+# Optional: only required for remote access profiles, not local-only usagectl.
+waitress==3.0.2
