@@ -374,6 +374,8 @@ tests/                      unittest suite; tests/golden/ holds fixtures
 
 ## Changing the kit
 
+Maintainers: [publish the same main branch to both repositories](publishing.md).
+
 Edit under `claude-files/`, `codex-files/`, `shared/`, `coordinator/`, `CLAUDE.md` or `AGENTS.md`, then re-run the installer against any project to refresh the user-level pieces, or against each project to refresh its CLAUDE.md/AGENTS.md block and permissions. Commit the change here. Non-obvious choices are logged in `DECISIONS.md`, with the reasoning in the linked handoff file.
 
 Run the tests from the repo root (they exercise the installer, so allow a few minutes):
