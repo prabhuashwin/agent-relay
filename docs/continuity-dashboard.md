@@ -105,6 +105,13 @@ Checkpoint files themselves are excluded by the existing fingerprint logic.
 Manually supplied checkpoint verification is separate, labelled reported. Neither
 a passing command nor matching checkpoint automatically accepts the whole task.
 
+Resume prompts from both `handoff resume` and `board claim` include the recorded
+task context and latest local executed-check status. An unavailable evidence read
+is labelled `unavailable`, not passed; this does not undo a completed claim. Command
+arguments and timestamps are included, but captured output is not copied into the
+prompt. Status describes prompt-generation time; verify again before editing.
+Long context lists show the first twelve items and point back to the checkpoint.
+
 ## Ownership transfers
 
 1. Stop the source agent's edits and prepare a matching checkpoint.
@@ -124,6 +131,10 @@ The destination must be configured with `edit` capability. The same source accou
 can reclaim released work if you decide not to switch. Tickets are single-use and
 bound to the exact checkpoint. Repository changes, checkpoint edits, and re-preparing
 invalidate the release. Refresh the checkpoint and release again to recover.
+
+Conflict messages retain their failure exit code and include recovery guidance.
+See [handoff recovery](handoff-recovery.md) for matching the correct worktree,
+preserving edits, refreshing context, rerunning checks and replacing old tickets.
 
 CLI prepare/claim and board release/claim share an OS file lock for their short
 checkpoint operations. After a workstream first uses board release, ownership changes

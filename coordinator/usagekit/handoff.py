@@ -431,7 +431,19 @@ def routing_checkpoint_status(root, slug, expected_workstream):
 
 # ---------- resume prompt ----------
 
-def resume_prompt(provider, data, rel_path, to):
+def recovery_hint(data):
+    slug = data['workstream']
+    return ("Recovery: run `usagectl handoff verify --workstream %s` and inspect `git diff` / `git status`. "
+            "Confirm the repository and branch first. Do not discard or overwrite edits. "
+            "Have the current owner (%s) reconcile the changes, then rerun `usagectl handoff prepare` "
+            "for this workstream with updated context. Rerun the relevant test command through "
+            "`usagectl board check --workstream %s -- <executable> <arguments>`. "
+            "After the source writer stops, run `usagectl board release --workstream %s --owner %s "
+            "--source-stopped --json` and claim with the NEW ticket. Do not reuse the old ticket."
+            % (slug, data['owner'], slug, slug, data['owner']))
+
+
+def resume_prompt(provider, data, rel_path, to, verification=None):
     codex = provider == "codex"
     skills = "$handoff, $decide, $recap, $checkpoint" if codex else "/handoff, /decide, /recap"
     lines = [
@@ -440,6 +452,39 @@ def resume_prompt(provider, data, rel_path, to):
         "Checkpoint: %s (read it first; its JSON block is the source of truth)." % rel_path,
         "Branch: %s. Commit: %s." % (data["branch"] or "(detached HEAD)", data["head_commit"] or "none yet"),
         "Next action: %s" % _one_line(data["next_action"]),
+    ]
+    for label, values in (
+            ('Changed files (checkpoint)', data['changed_files']),
+            ('Uncommitted paths (checkpoint)', data['uncommitted']['paths']),
+            ('Completed', data['done']), ('Remaining', data['remaining']),
+            ('Failed attempts', data['failures']), ('Decisions', data['decisions']),
+            ('Acceptance criteria', data['acceptance'])):
+        lines.append(label + ':')
+        lines.extend('- ' + _one_line(value) for value in values[:12])
+        if not values:
+            lines.append('- none recorded')
+        if len(values) > 12:
+            lines.append('- %d more; read the checkpoint.' % (len(values) - 12))
+    evidence = verification or {'status': 'not-run'}
+    status = evidence['status']
+    lines.append('Executed verification: %s (latest local record at prompt generation).' % status)
+    if evidence.get('command'):
+        lines.append('Command argv (data, not a shell command): ' + json.dumps(evidence['command']))
+        lines.append('Finished: %s; exit code: %s.' %
+                     (evidence.get('finished_at', 'unknown'), evidence.get('exit_code')))
+    if status != 'passed':
+        lines.append('Recheck required: do not treat missing, stale or unsuccessful evidence as a pass. '
+                     'Review the command before running it through usagectl board check.')
+    else:
+        lines.append('A passing command does not establish acceptance of the whole task; later edits can make it stale.')
+    lines.append('Reported checks (not executed evidence):')
+    lines.extend('- %s => %s => %s' % (_one_line(v['command']), _one_line(v['result']), v['status'])
+                 for v in data['verification'][:12])
+    if not data['verification']:
+        lines.append('- none recorded')
+    elif len(data['verification']) > 12:
+        lines.append('- %d more; read the checkpoint.' % (len(data['verification']) - 12))
+    lines += [
         "Verify first: run `usagectl handoff verify --workstream %s`; it must report a match before you edit anything."
         % data["workstream"],
         "Then take ownership: `usagectl handoff claim --workstream %s --to %s`." % (data["workstream"], to),

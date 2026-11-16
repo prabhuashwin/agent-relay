@@ -53,7 +53,7 @@ def checkpoint(root, slug):
 def require_match(root, data):
     mismatches = handoff.compare(root, data)
     if mismatches:
-        raise CtlError('; '.join(mismatches), EXIT_CONFLICT)
+        raise CtlError('; '.join(mismatches) + '\n' + handoff.recovery_hint(data), EXIT_CONFLICT)
 
 
 def managed(paths, root, slug):
@@ -91,9 +91,12 @@ def claim(paths, root, slug, target, ticket):
         path, data = checkpoint(root, slug)
         row = db.execute('SELECT * FROM releases WHERE repo=? AND slug=?', (repo_key(root), slug)).fetchone()
         if not row or row['consumed'] or not secrets.compare_digest(row['ticket'], str(ticket)):
-            raise CtlError('no matching unconsumed release; stop the source writer and release first', EXIT_CONFLICT)
+            raise CtlError('no matching unconsumed release; inspect the checkpoint owner first. '
+                           'If the destination already owns it, use handoff resume instead of retrying a consumed ticket. '
+                           + handoff.recovery_hint(data), EXIT_CONFLICT)
         if row['checkpoint'] != digest(data):
-            raise CtlError('checkpoint changed after release; prepare and release again', EXIT_CONFLICT)
+            raise CtlError('checkpoint changed after release; prepare and release again. '
+                           + handoff.recovery_hint(data), EXIT_CONFLICT)
         require_match(root, data)
         previous = data['owner']
         # Hold the writer lock through the Markdown update. If a crash interrupts commit,
@@ -108,7 +111,8 @@ def claim(paths, root, slug, target, ticket):
                            'from': previous, 'to': target, 'at': fmt_utc(now())}])
     except (OSError, CtlError):
         warning = 'Ownership changed, but routing history could not be updated. Switching cooldown may be unavailable.'
-    prompt = handoff.resume_prompt(account['provider'], data, 'handoffs/%s.checkpoint.md' % slug, target)
+    prompt = handoff.resume_prompt(account['provider'], data, 'handoffs/%s.checkpoint.md' % slug, target,
+                                  latest_verification(paths, root, slug))
     prompt = '\n'.join(line for line in prompt.splitlines() if not line.startswith('Then take ownership:'))
     prompt += '\nOwnership was already claimed through Agent Relay. Do not claim it again.'
     result = {'status': 'claimed', 'owner': target, 'workstream': slug, 'prompt': prompt}
@@ -150,6 +154,38 @@ def run_check(paths, root, slug, command, timeout=60):
     return record
 
 
+def _verification(db, root, slug, current):
+    row = db.execute('SELECT record FROM checks WHERE repo=? AND slug=? ORDER BY id DESC LIMIT 1',
+                     (repo_key(root), slug)).fetchone()
+    if not row:
+        return {'status': 'not-run'}
+    try:
+        record = json.loads(row['record'])
+    except (ValueError, TypeError):
+        return {'status': 'unavailable'}
+    if (not isinstance(record, dict) or
+            record.get('status') not in ('passed', 'failed', 'timed-out', 'changed-during-check') or
+            not isinstance(record.get('after'), str) or
+            not isinstance(record.get('command'), list) or
+            not all(isinstance(arg, str) for arg in record['command'])):
+        return {'status': 'unavailable'}
+    if row and record['after'] != current:
+        record['original_status'] = record['status']
+        record['status'] = 'stale'
+    return record
+
+
+def latest_verification(paths, root, slug):
+    if not os.path.exists(os.path.join(paths.state, 'continuity.sqlite3')):
+        return {'status': 'not-run'}
+    try:
+        with database(paths) as db:
+            return _verification(db, root, slug, digest(handoff.current_state(root)))
+    except (OSError, sqlite3.Error, ValueError, KeyError, TypeError, CtlError):
+        # Evidence is advisory; never make a completed ownership change look failed.
+        return {'status': 'unavailable'}
+
+
 def snapshot(paths, root, task_type='feature', scope='small', risk='medium'):
     cfg = config.load(paths) if os.path.exists(paths.config) else config.default_config()
     zone, clock = config.zone_of(cfg), now()
@@ -172,12 +208,7 @@ def snapshot(paths, root, task_type='feature', scope='small', risk='medium'):
                 row = db.execute('SELECT * FROM releases WHERE repo=? AND slug=?',
                                  (repo_key(root), slug)).fetchone()
                 released = bool(row and not row['consumed'] and row['checkpoint'] == digest(data) and not mismatches)
-                evidence = db.execute('SELECT record FROM checks WHERE repo=? AND slug=? ORDER BY id DESC LIMIT 1',
-                                      (repo_key(root), slug)).fetchone()
-                verification = json.loads(evidence['record']) if evidence else {'status': 'not-run'}
-                if evidence and verification['after'] != current:
-                    verification['original_status'] = verification['status']
-                    verification['status'] = 'stale'
+                verification = _verification(db, root, slug, current)
                 req = routing.Request(task_type, scope, risk, need=['edit'], owner=data['owner'],
                                       checkpoint=slug if not mismatches else None, workstream=slug)
                 if data['owner'] in cfg['accounts']:

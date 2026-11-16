@@ -2,6 +2,7 @@
 
 | Topic | File | Updated | Status | Resume with |
 |---|---|---|---|---|
+| Relay resume workflow | relay-resume-workflow.md | 2026-11-16 | Done - reviewed and committed locally; publication pending | `Relay resume workflow: continue from handoffs/relay-resume-workflow.md` |
 | Relay handoff proof | relay-handoff-proof.md | 2026-11-16 | Done - verified documentation and demo; Relay publication authorized | `Relay handoff proof: continue from handoffs/relay-handoff-proof.md` |
 | Continuity dashboard | continuity-dashboard.md | 2026-11-06 | Implementation committed; README and demo video ready locally; rate-limit recovery and reboot pending | `Continuity dashboard: continue from handoffs/continuity-dashboard.md` |
 | Automatic usage | automatic-usage-plan.md | 2026-10-31 | Done - verified and enabled locally, uncommitted | `Automatic usage: continue from handoffs/automatic-usage-plan.md` |

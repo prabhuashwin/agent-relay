@@ -35,3 +35,6 @@ Append-only, one line per decision, newest last. Add a row with `/decide <decisi
 | 2026-11-06 | Preserve CA and sessions while supervising gateway and Caddy at user login | Add bounded recovery without re-pairing; existing polling unchanged pending explicit migration approval | continuity-dashboard.md |
 | 2026-11-06 | Move approved provider polling into supervised phone gateway and disable old polling startup | Expose sync-health metadata and Claude refresh on phone without duplicate readers | continuity-dashboard.md |
 | 2026-11-16 | Lead with Git-checked handoffs and an isolated executable demo | Demonstrate evidence freshness without unmeasured competitor claims or provider calls | relay-handoff-proof.md |
+| 2026-11-16 | Keep executed evidence advisory and separate from reported checks in resume prompts | Evidence read failures must not invalidate a completed ownership transfer | relay-resume-workflow.md |
+| 2026-11-16 | Publish all bounded pilot outcomes without speed claims | Tiny noisy trials favored plain notes; evidence clarity is the demonstrated benefit | relay-resume-workflow.md |
+| 2026-11-16 | Use portable CLIs and narrowly scoped temporary state access for trials | Validate interoperability without replacing installed tools or weakening receiver sandboxing | relay-resume-workflow.md |

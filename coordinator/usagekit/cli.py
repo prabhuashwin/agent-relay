@@ -427,8 +427,9 @@ def cmd_handoff_resume(args):
         raise CtlError("unknown account %r" % args.to)
     root, _path, data = _load_for(args.workstream)
     mism = handoff.compare(root, data)
-    prompt = handoff.resume_prompt(acct["provider"], data, "handoffs/%s.checkpoint.md" % args.workstream, args.to)
-    from .continuity import managed
+    from .continuity import managed, latest_verification
+    prompt = handoff.resume_prompt(acct["provider"], data, "handoffs/%s.checkpoint.md" % args.workstream, args.to,
+                                  latest_verification(_p, root, args.workstream))
     if managed(_p, root, args.workstream):
         prompt = '\n'.join(line for line in prompt.splitlines() if not line.startswith('Then take ownership:'))
         if data['owner'] != args.to:

@@ -5,6 +5,7 @@ import json
 import threading
 import subprocess
 import time
+import sqlite3
 import urllib.request
 import urllib.error
 from unittest import mock
@@ -14,6 +15,73 @@ from tests.helpers import call
 
 
 class ContinuityTests(HandoffCase):
+    def test_claim_treats_malformed_matching_evidence_as_unavailable(self):
+        from usagekit import continuity, handoff
+        self.prepared()
+        with continuity.database(self.paths) as db:
+            db.execute('INSERT INTO checks (repo, slug, record) VALUES (?, ?, ?)',
+                       (continuity.repo_key(self.repo), WS,
+                        json.dumps({'after': continuity.digest(handoff.current_state(self.repo))})))
+            db.commit()
+        result = self.board('claim', '--workstream', WS, '--to', 'acct-b',
+                            '--ticket', self.release().json['ticket'])
+        self.assertEqual(result.code, 0, result.err)
+        self.assertIn('Executed verification: unavailable', result.json['prompt'])
+        self.assertEqual(self.ckpt()['owner'], 'acct-b')
+
+    def test_claim_survives_unavailable_evidence_after_ownership_changes(self):
+        self.prepared()
+        ticket = self.release().json['ticket']
+        with mock.patch('usagekit.continuity._verification', side_effect=sqlite3.OperationalError('busy')):
+            result = self.board('claim', '--workstream', WS, '--to', 'acct-b', '--ticket', ticket)
+        self.assertEqual(result.code, 0, result.err)
+        self.assertEqual(self.ckpt()['owner'], 'acct-b')
+        self.assertIn('Executed verification: unavailable', result.json['prompt'])
+        self.assertIn('Recheck required', result.json['prompt'])
+
+    def test_resume_includes_context_and_separates_reported_checks(self):
+        self.write('a.txt', 'unfinished')
+        self.prepared('--done', 'Added parser', '--remaining', 'Handle empty input',
+                      '--failure', 'Regex approach dropped whitespace',
+                      '--decision', 'Preserve whitespace', '--accept', 'Empty input works',
+                      '--verify', 'pytest=>agent said passed=>pass')
+        result = call('handoff', 'resume', '--workstream', WS, '--to', 'acct-b')
+        self.assertEqual(result.code, 0, result.err)
+        for text in ('Added parser', 'Handle empty input', 'Regex approach dropped whitespace',
+                     'Preserve whitespace', 'Empty input works', 'a.txt',
+                     'Executed verification: not-run', 'Reported checks (not executed evidence)'):
+            self.assertIn(text, result.out)
+
+    def test_resume_and_claim_show_stale_executed_evidence(self):
+        self.prepared()
+        self.assertEqual(call('board', 'check', '--workstream', WS, '--',
+                              sys.executable, '-c', 'print("private output")').code, 0)
+        fresh = call('handoff', 'resume', '--workstream', WS, '--to', 'acct-b')
+        self.assertIn('Executed verification: passed', fresh.out)
+        self.write('a.txt', 'changed')
+        self.prepared()  # Matching checkpoint does not make old test evidence fresh.
+        stale = call('handoff', 'resume', '--workstream', WS, '--to', 'acct-b')
+        self.assertIn('Executed verification: stale', stale.out)
+        self.assertIn('Recheck required', stale.out)
+        ticket = self.release().json['ticket']
+        claimed = self.board('claim', '--workstream', WS, '--to', 'acct-b', '--ticket', ticket)
+        self.assertEqual(claimed.code, 0, claimed.err)
+        self.assertIn('Executed verification: stale', claimed.json['prompt'])
+        self.assertNotIn('output_tail', claimed.json['prompt'])
+        self.assertNotIn('Then take ownership:', claimed.json['prompt'])
+
+    def test_changed_tree_claim_explains_recovery_without_changing_owner(self):
+        self.prepared()
+        ticket = self.release().json['ticket']
+        self.write('a.txt', 'changed')
+        failed = self.board('claim', '--workstream', WS, '--to', 'acct-b', '--ticket', ticket)
+        self.assertEqual(failed.code, 3)
+        self.assertIn('Recovery:', failed.err)
+        self.assertIn('handoff verify --workstream ' + WS, failed.err)
+        self.assertIn('acct-a', failed.err)
+        self.assertIn('Do not discard', failed.err)
+        self.assertEqual(self.ckpt()['owner'], 'acct-a')
+
     def board(self, *args):
         return call('board', *args, '--json')
 

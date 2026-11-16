@@ -16,6 +16,13 @@ the checkpoint. You still stop the source writer and decide whether the work is 
 edit the code, see stale evidence and a rejected claim, then refresh and transfer.
 Uses fictional accounts and a temporary repository; no model calls or sign-in needed.
 
+The resume prompt includes completed and remaining work, failed attempts, decisions,
+changed paths, and the latest local verification status. Reported checks stay separate.
+
+- [Recover a stale checkpoint or rejected claim](docs/handoff-recovery.md)
+- [Use Relay alongside Herdr](docs/herdr-companion.md)
+- [Reproduce the plain-note comparison](docs/demo/handoff-comparison.md)
+
 ## See it in 66 seconds
 
 ![Animated Agent Relay walkthrough: check capacity, save context, and continue the work](docs/media/agent-relay-walkthrough.gif)
