@@ -287,6 +287,11 @@ The installer refreshes the shared runtime and scripts while retaining coordinat
 
 ## Example: continue a Claude task in Codex
 
+For a self-contained demonstration of stale test evidence and explicit release/claim,
+start with the [local handoff demo](demo/verified-handoff.md). It uses temporary
+state and fictional accounts, without calling either provider. The example below
+adds real-work handoff notes and quota-based routing using the basic handoff CLI.
+
 You're adding search to an app. Claude has drafted the indexer, but its session allowance is nearing your reserve. You want Codex to finish the tests without repeating the investigation.
 
 This walkthrough assumes you installed `--tool both`, added `usagectl` to PATH, and completed the account/window setup above. Run terminal commands from your app's Git repository. The sample accounts have two Claude windows and one Codex window; configure and record any additional windows your own plans show. Account aliases are local labels, not logins.

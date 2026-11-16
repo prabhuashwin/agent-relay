@@ -1,8 +1,20 @@
 # Agent Relay
 
-**Pick up your coding work without explaining it all again.**
+**Continue unfinished Claude Code work in Codex with a Git-checked checkpoint and recorded test evidence.**
 
-For developers using **Claude Code, Codex, or both**. Relay saves your next step, shows recorded account capacity, and helps you hand work between sessions. It runs on your computer, alongside your existing Git projects.
+For developers using **Claude Code, Codex, or both**. Relay saves decisions and the next step, checks whether the code still matches the checkpoint, and distinguishes executed checks from reported results. Switch in either direction, or resume in a fresh session of the same tool. Recorded account capacity helps you decide when to switch.
+
+## See what a handoff note cannot check
+
+A test passed. Then the code changed. Does the next agent know that result is stale?
+
+Relay marks recorded check evidence stale when the repository fingerprint changes.
+Its explicit release-and-claim flow rejects a transfer if the code no longer matches
+the checkpoint. You still stop the source writer and decide whether the work is done.
+
+**[Run the local handoff demo](docs/demo/verified-handoff.md)**: record a passing check,
+edit the code, see stale evidence and a rejected claim, then refresh and transfer.
+Uses fictional accounts and a temporary repository; no model calls or sign-in needed.
 
 ## See it in 66 seconds
 
@@ -45,7 +57,7 @@ Start with handoff notes. Add the dashboard and phone access when you need them:
 
 ## Know before you start
 
-You still run the coding tools and review their work. Relay does not move chat history or increase usage limits. Readings can be stale or rate-limited; Claude account polling is experimental. Stop the source writer before handing off. Phone access is for one owner and their devices, and needs an awake, reachable host.
+You still run the coding tools and review their work. Relay does not move chat history or increase usage limits. Git checks do not cover ignored files or changes to external dependencies; ownership is cooperative, not an editor lock. Readings can be stale or rate-limited; Claude account polling is experimental. Stop the source writer before handing off. Phone access is for one owner and their devices, and needs an awake, reachable host.
 
 [Full setup and reference](docs/setup-and-reference.md) · [Daily workflow and recovery](GUIDE.md) · [Scope and limitations](docs/setup-and-reference.md#scope-and-limitations)
 

@@ -34,3 +34,4 @@ Append-only, one line per decision, newest last. Add a row with `/decide <decisi
 | 2026-11-06 | Use mobile quota summaries with one account disclosure and persistent section anchors | Compare accounts before scrolling; retain warnings and detailed actions; validate with browser fixtures | continuity-dashboard.md |
 | 2026-11-06 | Preserve CA and sessions while supervising gateway and Caddy at user login | Add bounded recovery without re-pairing; existing polling unchanged pending explicit migration approval | continuity-dashboard.md |
 | 2026-11-06 | Move approved provider polling into supervised phone gateway and disable old polling startup | Expose sync-health metadata and Claude refresh on phone without duplicate readers | continuity-dashboard.md |
+| 2026-11-16 | Lead with Git-checked handoffs and an isolated executable demo | Demonstrate evidence freshness without unmeasured competitor claims or provider calls | relay-handoff-proof.md |
